@@ -27,6 +27,14 @@
         {
             "type": "git",
             "url": "https://github.com/GemsTracker/hl7.git"
-        }
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/Pharma-Intelligence/HL7.git"
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/Pharma-Intelligence/MLLP.git"
+        }		
     ]
 }
