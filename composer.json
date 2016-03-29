@@ -4,6 +4,7 @@
     "type": "library",
     "require": {
         "php": ">=5.3.9",
+        "gemstracker/hl7": "dev-master",
         "pharmaintelligence/mllp": "dev-master",
         "zendframework/zend-db": ">=2.6"
     },
