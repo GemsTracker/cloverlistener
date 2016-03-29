@@ -4,7 +4,8 @@
     "type": "library",
     "require": {
         "php": ">=5.3.9",
-        "pharma-intelligence/mllp": "dev-master",
+        "gemstracker/hl7" : "dev-master",
+        "pharmaintelligence/mllp": "dev-master",
         "zendframework/zend-db": ">=2.6"
     },
     "require-dev": {
@@ -24,26 +25,8 @@
     },
     "repositories": [
 		{
-		  "type": "package",
-		  "package": {
-			"name": "gemstracker/hl7",
-			"version": "dev-master",
-			"source": {
-			  "url": "https://github.com/GemsTracker/hl7.git",
-			  "type": "git"
-			}
-		  }
-		},
-		{
-		  "type": "package",
-		  "package": {
-			"name": "pharma-intelligence/mllp",
-			"version": "dev-master",
-			"source": {
-			  "url": "https://github.com/Pharma-Intelligence/MLLP.git",
-			  "type": "git"
-			}
-		  }
+		  "url": "https://github.com/GemsTracker/hl7.git",
+		  "type": "git"
 		}
     ]
 }
