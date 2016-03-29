@@ -4,7 +4,6 @@
     "type": "library",
     "require": {
         "php": ">=5.3.9",
-        "gemstracker/hl7" : "dev-master",
         "pharmaintelligence/mllp": "dev-master",
         "zendframework/zend-db": ">=2.6"
     },
@@ -25,8 +24,8 @@
     },
     "repositories": [
 		{
-		  "url": "https://github.com/GemsTracker/hl7.git",
-		  "type": "git"
+		  "type": "git",
+		  "url": "https://github.com/GemsTracker/hl7.git"
 		}
     ]
 }
