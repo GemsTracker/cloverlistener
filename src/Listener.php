@@ -18,6 +18,7 @@ use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
 use React\Socket\Server as SocketServer;
 use React\Stream\Stream;
+use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Adapter\Adapter;
 use Zend\Db\TableGateway\TableGateway;
@@ -31,7 +32,7 @@ use Zend\Db\TableGateway\TableGateway;
  * @license    New BSD License
  * @since      Class available since version 1.0.0 Oct 1, 2016 6:39:36 PM
  */
-class Listener extends Server implements ApplicationInterface
+class Listener extends Server implements ApplicationInterface, TargetInterface
 {
     use TargetTrait;
 
@@ -66,7 +67,7 @@ class Listener extends Server implements ApplicationInterface
     /**
      * @var string The name of the logging table for received messages
      */
-    protected $msgTable = null;
+    protected $msgTable = 'hl7_messages';
 
     public function __construct(array $config)
     {
@@ -93,10 +94,16 @@ class Listener extends Server implements ApplicationInterface
             );
             var_dump($map);
             $message = $unserializer->loadMessageFromString($data, $map);
-
             if (count($message->getSegmentsByName('MSA')) > 0) {
                 // Response
                 // @todo: Handle the response probably not needed as this will be initiated by a client
+                $mshs = $message->getSegmentsByName('MSH');
+                $server->msgToDb($data, $mshs[0]);
+
+                $ack = new ACK($message);
+
+                $server->send($ack, $connection);
+
             } else {
                 // Notification
                 $mshs = $message->getSegmentsByName('MSH');
@@ -154,6 +161,7 @@ class Listener extends Server implements ApplicationInterface
 
     public function msgToDb($data, MSHSegment $msh)
     {
+        echo "MSG " . $this->msgTable . ' - ' . get_class($this->db) . "\n";
         if (!($this->db instanceof Adapter) || empty($this->msgTable)) {
             return;
         }
@@ -161,14 +169,14 @@ class Listener extends Server implements ApplicationInterface
         $messageTable = new TableGateway($this->msgTable, $this->db);
 
         $values = array(
-            'datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
-            'type'       => $msh->getMessageType()->__toString(),
-            'msgid'      => $msh->getMessageControlId(),
-            'processing' => $msh->getProcessingId(),
-            'version'    => $msh->getVersionId(),
-            'message'    => $data
+            'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
+            'hm_type'       => $msh->getMessageType()->__toString(),
+            'hm_msgid'      => $msh->getMessageControlId(),
+            'hm_processing' => $msh->getProcessingId(),
+            'hm_version'    => $msh->getVersionId(),
+            'hm_message'    => $data
         );
-
+        echo "MSG Saved\n";
         $result = $messageTable->insert($values);
     }
 
