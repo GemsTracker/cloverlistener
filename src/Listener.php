@@ -1,23 +1,57 @@
 <?php
+/**
+ *
+ * @package    Gems
+ * @subpackage Clover
+ * @author Menno Dekker <menno.dekker@erasmusmc.nl>
+ * @copyright  Copyright (c) 2016 Erasmus MC
+ * @license    New BSD License
+ */
+
 namespace Gems\Clover;
 
-use Evenement\EventEmitterInterface;
 use Gems\HL7\Message\ACK;
 use Gems\HL7\Segment\MSHSegment;
 use PharmaIntelligence\HL7\Unserializer;
 use PharmaIntelligence\MLLP\Server;
+use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
+use React\Socket\Server as SocketServer;
 use React\Stream\Stream;
+use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Adapter\Adapter;
-use Zend\Db\Adapter\AdapterAwareInterface;
 use Zend\Db\TableGateway\TableGateway;
 
 /**
- * Description of Listener
  *
- * @author Menno Dekker <menno.dekker@erasmusmc.nl>
+ *
+ * @package    Gems
+ * @subpackage Clover
+ * @copyright  Copyright (c) 2016 Erasmus MC
+ * @license    New BSD License
+ * @since      Class available since version 1.0.0 Oct 1, 2016 6:39:36 PM
  */
-class Listener extends Server implements AdapterAwareInterface {
+class Listener extends Server implements ApplicationInterface
+{
+    use TargetTrait;
+
+    /**
+     *
+     * @var array
+     */
+    protected $_config;
+
+    /**
+     *
+     * @var \React\EventLoop\LoopInterface
+     */
+    protected $_loop;
+
+    /**
+     *
+     * @var SocketServer
+     */
+    protected $_socket;
 
     /**
      * @var Adapter
@@ -28,14 +62,20 @@ class Listener extends Server implements AdapterAwareInterface {
      * @var Stream
      */
     protected $logging = null;
-    
+
     /**
      * @var string The name of the logging table for received messages
      */
     protected $msgTable = null;
 
-    public function __construct(EventEmitterInterface $io) {
-        parent::__construct($io);
+    public function __construct(array $config)
+    {
+        $this->config = $config;
+
+        $this->_loop   = Factory::create();
+        $this->_socket = new SocketServer($this->_loop);
+
+        parent::__construct($this->_socket);
 
         $server = $this;
         $this->on('data', function ($data, ConnectionInterface $connection) use($server) {
@@ -53,7 +93,7 @@ class Listener extends Server implements AdapterAwareInterface {
             );
             var_dump($map);
             $message = $unserializer->loadMessageFromString($data, $map);
-            
+
             if (count($message->getSegmentsByName('MSA')) > 0) {
                 // Response
                 // @todo: Handle the response probably not needed as this will be initiated by a client
@@ -76,7 +116,19 @@ class Listener extends Server implements AdapterAwareInterface {
         });
     }
 
-    public function initLogging(Stream $logging) {
+    /**
+     * Should be called after answering the request to allow the Target
+     * to check if all required registry values have been set correctly.
+     *
+     * @return boolean False if required values are missing.
+     */
+    public function checkRegistryRequestsAnswers()
+    {
+        return $this->db instanceof AdapterInterface;
+    }
+
+    public function initLogging(Stream $logging)
+    {
         $this->logging = $logging;
 
         // Log connection info
@@ -100,7 +152,8 @@ class Listener extends Server implements AdapterAwareInterface {
         });
     }
 
-    public function msgToDb($data, MSHSegment $msh) {
+    public function msgToDb($data, MSHSegment $msh)
+    {
         if (!($this->db instanceof Adapter) || empty($this->msgTable)) {
             return;
         }
@@ -119,11 +172,15 @@ class Listener extends Server implements AdapterAwareInterface {
         $result = $messageTable->insert($values);
     }
 
-    public function setDbAdapter(Adapter $adapter) {
-        $this->db = $adapter;
+    public function run()
+    {
+        echo "RUN\n";
+        $this->_socket->listen($this->config['application']['port'], $this->config['application']['ip']);
+        $this->_loop->run();
     }
-    
-    public function setMsgTable($tableName) {
+
+    public function setMsgTable($tableName)
+    {
         $this->msgTable = $tableName;
     }
 

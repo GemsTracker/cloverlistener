@@ -17,5 +17,8 @@ return array(
         'password' => PASSWD,
         'charset'  => 'utf8',
         'hostname' => HOST
-    )
+    ),
+    'project'     => array(
+        'name'     => 'Clover',
+    ),
 );

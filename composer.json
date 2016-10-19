@@ -5,7 +5,9 @@
     "require": {
         "php": ">=5.6.0",
         "gemstracker/hl7": "dev-master",
+        "magnafacta/zalt-loader": "dev-master",
         "pharmaintelligence/mllp": "dev-master",
+        "zendframework/zend-console": ">=2.6",
         "zendframework/zend-db": ">=2.8",
         "zendframework/stdlib": ">=3.1"
     },
@@ -28,6 +30,10 @@
 		{
 		  "type": "git",
 		  "url": "https://github.com/GemsTracker/hl7.git"
+		},
+		{
+		  "type": "git",
+		  "url": "https://github.com/MagnaFacta/zalt-loader.git"
 		}
     ]
 }
