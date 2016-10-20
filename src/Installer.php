@@ -70,11 +70,10 @@ class Installer implements ApplicationInterface, TargetInterface
                             if ($stmt instanceof StatementInterface) {
                                 $result = $stmt->execute();
 
-                                $changed  = $result->getAffectedRows();
                                 $fileName = $file->getBasename();
 
                                 // TODO: logging instead of echo
-                                echo "Executed script: $fileName, $changed row(s) changed.\n";
+                                echo "Executed script: $fileName successfully.\n";
                             }
                         }
                     }

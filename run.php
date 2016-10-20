@@ -31,13 +31,17 @@ $loader = new ProjectOverloader([
 
 $sm = new ServiceManager(['factories' => [
     'db' => function() use ($config) {
-            // echo "DB\n";
-            $db = new Adapter($config['database']);
 
-            $db->getDriver()->getConnection()->connect();
+        // echo "DB\n";
+        $db = new Adapter($config['database']);
 
-            return $db;
-        },
+        $db->getDriver()->getConnection()->connect();
+
+        return $db;
+    },
+    'queueManager' => function() use ($loader) {
+        return $loader->create('Queue\\QueueManager');
+    },
     ]]);
 
 $loader->setServiceManager($sm);
@@ -49,60 +53,24 @@ try {
         'help|h'    => 'Display this help',
         'install|i' => 'Install the application',
         'listen|l'  => 'Listen to HL7 queue - DEFAULT action',
-        // 'queue|q'   => 'Check queue and execute commands',
+        'queue|q=s' => 'Queue commands: rebuild, empty',
         ]);
     $args->parse();
 
     if ($args->getOption('queue')) {
-        // TODO
-        require __DIR__ . '/queue.php';
+        $application = $loader->create('Clover\\QueueProcessor', $args->getOption('queue'));
     } elseif ($args->getOption('install')) {
-        $application = $loader->create('Clover\Installer');
-        $application->run();
-        exit(0);
+        $application = $loader->create('Clover\\Installer');
     } elseif ($args->getOption('help')) {
         echo $args->getUsageMessage(). "\n";
         exit(0);
     } else {
-        $application = $loader->create('Clover\Listener', $config['application']);
-        $application->run();
-        exit(0);
+        $application = $loader->create('Clover\\Listener', $config['application']);
     }
+    $application->run();
+    exit(0);
 
 } catch (Zend\Console\Exception\RuntimeException $e) {
     echo $e->getUsageMessage(). "\n";
     exit(1);
 }
-echo "OK\n";
-
-/**
-
-$port = $config['application']['port'];
-$ip   = $config['application']['ip'];
-$db   = new Adapter($config['database']);
-
-$loop    = Factory::create();
-$socket  = new SocketServer($loop);
-
-$server = new Listener($socket);
-
-// Set up a React stream to STDOUT to log everything to the console.
-/* Logging takes 100% CPU when run using nohup, so disabled for now
-if (!defined('STDIN'))
-    define('STDIN', fopen('php://stdin', 'r'));
-if (!defined('STDOUT'))
-    define('STDOUT', fopen('php://stdout', 'w'));
-if (!defined('STDERR'))
-    define('STDERR', fopen('php://stderr', 'w'));
-$logging = new Stream(STDOUT, $loop);
-$logging->write("Starting server on $ip:$port" . PHP_EOL);
-$server->initLogging($logging);
- * /
-
-$server->setDbAdapter($db);
-$server->setMsgTable($config['application']['msgtable']);
-
-$socket->listen($port, $ip);
-
-$loop->run();
-// */

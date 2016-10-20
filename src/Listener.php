@@ -20,7 +20,7 @@ use React\Socket\Server as SocketServer;
 use React\Stream\Stream;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
-use Zend\Db\Adapter\Adapter;
+use Zend\Db\Adapter\AdapterInterface;
 use Zend\Db\TableGateway\TableGateway;
 
 /**
@@ -34,6 +34,7 @@ use Zend\Db\TableGateway\TableGateway;
  */
 class Listener extends Server implements ApplicationInterface, TargetInterface
 {
+    use MessageTableTrait;
     use TargetTrait;
 
     /**
@@ -49,39 +50,15 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $_loop;
 
     /**
-     * A installation specific segment loading class map set in
-     * _initSegmentClassMap() and used by the unserializer.
-     *
-     * @var array Segment name => segment class
-     */
-    protected $_segmentClassMap;
-
-    /**
      *
      * @var SocketServer
      */
     protected $_socket;
 
     /**
-     * @var Adapter
-     */
-    protected $db;
-
-    /**
-     *
-     * @var \Zalt\Loader\ProjectOverloader
-     */
-    protected $loader;
-
-    /**
      * @var Stream
      */
     protected $logging = null;
-
-    /**
-     * @var string The name of the logging table for received messages
-     */
-    protected $msgTable = 'hl7_messages';
 
     /**
      *
@@ -97,21 +74,6 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         parent::__construct($this->_socket);
 
         $this->on('data', [$this, 'onReceiving']);
-    }
-
-    /**
-     * Initialize the segment class map
-     */
-    protected function _initSegmentClassMap()
-    {
-        $this->_segmentClassMap = [
-            'MSH' => $this->loader->find('HL7\\Segment\\MSHSegment'),
-            'MSA' => $this->loader->find('HL7\\Segment\\MSASegment'),
-            'EVN' => $this->loader->find('HL7\\Segment\\EVNSegment'),
-            'PID' => $this->loader->find('HL7\\Segment\\PIDSegment'),
-            'PV1' => $this->loader->find('HL7\\Segment\\PV1Segment'),
-            'SCH' => $this->loader->find('HL7\\Segment\\SCHSegment'),
-            ];
     }
 
     /**
@@ -200,20 +162,21 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         if ($saveMessage)  {
             $messageId = $this->saveToDb($data, $message);
 
-            echo "Msg id: $messageId\n";
+            // echo "Msg id: $messageId\n";
         }
 
         $this->sendAcknowledgement($message, $connection);
 
-        $connection->end();
+        // Do not end the connection as it blocks later messages
+        // $connection->end();
 
-        unset($unserializer);
-        unset($message);
-        unset($ack);
-
-        if ($saveMessage) {
-            // Queue
+        if ($saveMessage && $messageId) {
+            $this->processForQueue($messageId, $message);
         }
+
+        unset($ack);
+        unset($message);
+        unset($unserializer);
     }
 
     /**
@@ -238,7 +201,9 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $msh = $message->getMshSegment();
 
         if ($msh) {
-            $messageTable = new TableGateway($this->msgTable, $this->db);
+            if (! $this->_messageTable) {
+                $this->_initMessageTable();
+            }
 
             $values = [
                 'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
@@ -249,8 +214,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                 'hm_message'    => $data,
                 ];
 
-            if ($messageTable->insert($values)) {
-                return $messageTable->getLastInsertValue();
+            if ($this->_messageTable->insert($values)) {
+                return $this->_messageTable->getLastInsertValue();
             }
         }
 
