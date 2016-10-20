@@ -22,7 +22,12 @@ defined('VENDOR_DIR') || define('VENDOR_DIR', dirname(__DIR__). '/vendor');
 require VENDOR_DIR . '/autoload.php';
 
 $config = require(CONFIG_DIR . '/config.php');
-$loader = new ProjectOverloader([$config['project']['name'], 'Gems']);
+$loader = new ProjectOverloader([
+    $config['project']['name'],
+    'Gems\\Clover',
+    'Gems',
+    'PharmaIntelligence',
+    ]);
 
 $sm = new ServiceManager(['factories' => [
     'db' => function() use ($config) {
@@ -52,14 +57,14 @@ try {
         // TODO
         require __DIR__ . '/queue.php';
     } elseif ($args->getOption('install')) {
-        $application = $loader->create('Clover\Installer', $config);
+        $application = $loader->create('Clover\Installer');
         $application->run();
         exit(0);
     } elseif ($args->getOption('help')) {
         echo $args->getUsageMessage(). "\n";
         exit(0);
     } else {
-        $application = $loader->create('Clover\Listener', $config);
+        $application = $loader->create('Clover\Listener', $config['application']);
         $application->run();
         exit(0);
     }

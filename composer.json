@@ -9,7 +9,7 @@
         "pharmaintelligence/mllp": "dev-master",
         "zendframework/zend-console": ">=2.6",
         "zendframework/zend-db": ">=2.8",
-        "zendframework/stdlib": ">=3.1"
+        "zendframework/zend-stdlib": ">=3.1"
     },
     "require-dev": {
         "phpunit/phpunit": "3.7.*"

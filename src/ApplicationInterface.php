@@ -23,5 +23,10 @@ namespace Gems\Clover;
  */
 interface ApplicationInterface
 {
+    /**
+     * Start the main application
+     *
+     * @return void
+     */
     public function run();
 }

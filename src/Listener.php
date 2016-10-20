@@ -10,9 +10,9 @@
 
 namespace Gems\Clover;
 
-use Gems\HL7\Message\ACK;
+use Gems\HL7\Node\Message;
 use Gems\HL7\Segment\MSHSegment;
-use PharmaIntelligence\HL7\Unserializer;
+use Gems\HL7\Unserializer;
 use PharmaIntelligence\MLLP\Server;
 use React\EventLoop\Factory;
 use React\Socket\ConnectionInterface;
@@ -49,6 +49,14 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $_loop;
 
     /**
+     * A installation specific segment loading class map set in
+     * _initSegmentClassMap() and used by the unserializer.
+     *
+     * @var array Segment name => segment class
+     */
+    protected $_segmentClassMap;
+
+    /**
      *
      * @var SocketServer
      */
@@ -60,6 +68,12 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $db;
 
     /**
+     *
+     * @var \Zalt\Loader\ProjectOverloader
+     */
+    protected $loader;
+
+    /**
      * @var Stream
      */
     protected $logging = null;
@@ -69,58 +83,46 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     protected $msgTable = 'hl7_messages';
 
-    public function __construct(array $config)
+    /**
+     *
+     * @param array $applicationConfig Application part of the config file
+     */
+    public function __construct(array $applicationConfig)
     {
-        $this->config = $config;
+        $this->config = $applicationConfig;
 
         $this->_loop   = Factory::create();
         $this->_socket = new SocketServer($this->_loop);
 
         parent::__construct($this->_socket);
 
-        $server = $this;
-        $this->on('data', function ($data, ConnectionInterface $connection) use($server) {
-            // $data contains a HL7 Payload
-            // Parse HL7 and create an ACK message
-            $unserializer = new Unserializer();
+        $this->on('data', [$this, 'onReceiving']);
+    }
 
-            $map     = array(
-                'MSH' => 'Gems\HL7\Segment\MSHSegment',
-                'MSA' => 'Gems\HL7\Segment\MSASegment',
-                'EVN' => 'Gems\HL7\Segment\EVNSegment',
-                'PID' => 'Gems\HL7\Segment\PIDSegment',
-                'PV1' => 'Gems\HL7\Segment\PV1Segment',
-                'SCH' => 'Gems\HL7\Segment\SCHSegment'
-            );
-            var_dump($map);
-            $message = $unserializer->loadMessageFromString($data, $map);
-            if (count($message->getSegmentsByName('MSA')) > 0) {
-                // Response
-                // @todo: Handle the response probably not needed as this will be initiated by a client
-                $mshs = $message->getSegmentsByName('MSH');
-                $server->msgToDb($data, $mshs[0]);
+    /**
+     * Initialize the segment class map
+     */
+    protected function _initSegmentClassMap()
+    {
+        $this->_segmentClassMap = [
+            'MSH' => $this->loader->find('HL7\\Segment\\MSHSegment'),
+            'MSA' => $this->loader->find('HL7\\Segment\\MSASegment'),
+            'EVN' => $this->loader->find('HL7\\Segment\\EVNSegment'),
+            'PID' => $this->loader->find('HL7\\Segment\\PIDSegment'),
+            'PV1' => $this->loader->find('HL7\\Segment\\PV1Segment'),
+            'SCH' => $this->loader->find('HL7\\Segment\\SCHSegment'),
+            ];
+    }
 
-                $ack = new ACK($message);
-
-                $server->send($ack, $connection);
-
-            } else {
-                // Notification
-                $mshs = $message->getSegmentsByName('MSH');
-                $server->msgToDb($data, $mshs[0]);
-
-                $ack = new ACK($message);
-
-                $server->send($ack, $connection);
-            }
-
-            $connection->end();
-
-            unset($unserializer);
-            unset($map);
-            unset($message);
-            unset($ack);
-        });
+    /**
+     * Called after the check that all required registry values
+     * have been set correctly has run.
+     *
+     * @return void
+     */
+    public function afterRegistry()
+    {
+        $this->_initSegmentClassMap();
     }
 
     /**
@@ -159,37 +161,114 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         });
     }
 
-    public function msgToDb($data, MSHSegment $msh)
+    /**
+     * Filter function to establish which messages to save
+     *
+     * @param Message $message
+     * @return boolean
+     */
+    public function isMessageSaveable(Message $message)
     {
-        echo "MSG " . $this->msgTable . ' - ' . get_class($this->db) . "\n";
-        if (!($this->db instanceof Adapter) || empty($this->msgTable)) {
-            return;
-        }
-
-        $messageTable = new TableGateway($this->msgTable, $this->db);
-
-        $values = array(
-            'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
-            'hm_type'       => $msh->getMessageType()->__toString(),
-            'hm_msgid'      => $msh->getMessageControlId(),
-            'hm_processing' => $msh->getProcessingId(),
-            'hm_version'    => $msh->getVersionId(),
-            'hm_message'    => $data
-        );
-        echo "MSG Saved\n";
-        $result = $messageTable->insert($values);
+        return $message->getMshSegment() instanceof MSHSegment;
     }
 
+    /**
+     * The action when a message is saved
+     *
+     * @param type $data
+     * @param ConnectionInterface $connection
+     */
+    public function onReceiving($data, ConnectionInterface $connection)
+    {
+        // $data contains a HL7 Payload
+        $unserializer = $this->loader->create('HL7\\Unserializer');
+
+        // Mainly to activate code completion. :)
+        if (! $unserializer instanceof Unserializer) {
+            throw new \Exception("Not a valid unserializer!");
+        }
+
+        $message = $unserializer->loadMessageFromString($data, $this->_segmentClassMap);
+
+        if (! $message) {
+            echo "Invalid message send.\n";
+        }
+
+        $saveMessage = $this->isMessageSaveable($message);
+        // echo "Save msg: $saveMessage\n";
+
+        if ($saveMessage)  {
+            $messageId = $this->saveToDb($data, $message);
+
+            echo "Msg id: $messageId\n";
+        }
+
+        $this->sendAcknowledgement($message, $connection);
+
+        $connection->end();
+
+        unset($unserializer);
+        unset($message);
+        unset($ack);
+
+        if ($saveMessage) {
+            // Queue
+        }
+    }
+
+    /**
+     * Start the main application
+     *
+     * @return void
+     */
     public function run()
     {
-        echo "RUN\n";
-        $this->_socket->listen($this->config['application']['port'], $this->config['application']['ip']);
+        $this->_socket->listen($this->config['port'], $this->config['ip']);
         $this->_loop->run();
     }
 
-    public function setMsgTable($tableName)
+    /**
+     *
+     * @param string $data Raw data
+     * @param Message $message
+     * @return int Message id from database
+     */
+    public function saveToDb($data, Message $message)
     {
-        $this->msgTable = $tableName;
+        $msh = $message->getMshSegment();
+
+        if ($msh) {
+            $messageTable = new TableGateway($this->msgTable, $this->db);
+
+            $values = [
+                'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
+                'hm_type'       => $msh->getMessageType()->__toString(),
+                'hm_msgid'      => $msh->getMessageControlId(),
+                'hm_processing' => $msh->getProcessingId(),
+                'hm_version'    => $msh->getVersionId(),
+                'hm_message'    => $data,
+                ];
+
+            if ($messageTable->insert($values)) {
+                return $messageTable->getLastInsertValue();
+            }
+        }
+
+        return false;
     }
 
+    /**
+     * Send the return acknowledgement
+     *
+     * @param Message $message
+     * @return $this
+     */
+    public function sendAcknowledgement(Message $message, ConnectionInterface $connection)
+    {
+        $ack = $this->loader->create('HL7\\Message\\ACK', $message);
+
+        $this->send($ack, $connection);
+
+        return $this;
+    }
 }

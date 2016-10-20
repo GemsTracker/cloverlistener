@@ -11,8 +11,8 @@
 
 namespace Gems\Clover;
 
-use Zalt\Loader\Target\TargetAbstract;
-
+use Zalt\Loader\Target\TargetInterface;
+use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Adapter\AdapterInterface;
 use Zend\Db\Adapter\Driver\StatementInterface;
 
@@ -25,24 +25,15 @@ use Zend\Db\Adapter\Driver\StatementInterface;
  * @license    New BSD License
  * @since      Class available since version 1.0.0 Oct 18, 2016 6:39:36 PM
  */
-class Installer extends TargetAbstract implements ApplicationInterface
+class Installer implements ApplicationInterface, TargetInterface
 {
-    /**
-     *
-     * @var array
-     */
-    protected $_config;
+    use TargetTrait;
 
     /**
      *
      * @var AdapterInterface
      */
     protected $db;
-
-    public function __construct(array $config)
-    {
-        $this->config = $config;
-    }
 
     /**
      * Should be called after answering the request to allow the Target
@@ -55,6 +46,11 @@ class Installer extends TargetAbstract implements ApplicationInterface
         return $this->db instanceof AdapterInterface;
     }
 
+    /**
+     * Start the main application
+     *
+     * @return void
+     */
     public function run()
     {
         $dbConfig = dirname(__DIR__) . '/config/db';
