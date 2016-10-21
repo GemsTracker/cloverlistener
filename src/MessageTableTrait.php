@@ -30,49 +30,15 @@ trait MessageTableTrait
     protected $_messageTable;
 
     /**
-     * A installation specific segment loading class map
-     *
-     * @var array Segment name => segment class
-     */
-    protected $_segmentClassMap;
-
-    /**
      *
      * @var \Zend\Db\Adapter\AdapterInterface
      */
     protected $db;
 
     /**
-     *
-     * @var \Zalt\Loader\ProjectOverloader
-     */
-    protected $loader;
-
-    /**
      * @var string The name of the queue table
      */
     protected $messageTableName = 'hl7_messages';
-
-    /**
-     *
-     * @var \Gems\Clover\Queue\QueueManager
-     */
-    protected $queueManager;
-
-    /**
-     * Initialize the segment class map
-     */
-    protected function _initSegmentClassMap()
-    {
-        $this->_segmentClassMap = [
-            'MSH' => $this->loader->find('HL7\\Segment\\MSHSegment'),
-            'MSA' => $this->loader->find('HL7\\Segment\\MSASegment'),
-            'EVN' => $this->loader->find('HL7\\Segment\\EVNSegment'),
-            'PID' => $this->loader->find('HL7\\Segment\\PIDSegment'),
-            'PV1' => $this->loader->find('HL7\\Segment\\PV1Segment'),
-            'SCH' => $this->loader->find('HL7\\Segment\\SCHSegment'),
-            ];
-    }
 
     /**
      * Helper function to set the message table gateway

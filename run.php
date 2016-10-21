@@ -8,20 +8,18 @@
  * @license    New BSD License
  */
 
-use Gems\Clover\Installer;
-use React\EventLoop\Factory;
-use React\Socket\Server as SocketServer;
+use Zalt\Db\DbFactory;
 use Zalt\Loader\ProjectOverloader;
 use Zend\Console\Getopt;
-use Zend\Db\Adapter\Adapter;
-use Zend\ServiceManager\ServiceManager;
 
+defined('APPLICATION_ENV') || define('APPLICATION_ENV', getenv('APPLICATION_ENV') ?: 'production');
 defined('CONFIG_DIR') || define('CONFIG_DIR', __DIR__ . '/config');
 defined('VENDOR_DIR') || define('VENDOR_DIR', dirname(__DIR__). '/vendor');
 
 require VENDOR_DIR . '/autoload.php';
 
 $config = require(CONFIG_DIR . '/config.php');
+
 $loader = new ProjectOverloader([
     $config['project']['name'],
     'Gems\\Clover',
@@ -29,31 +27,18 @@ $loader = new ProjectOverloader([
     'PharmaIntelligence',
     ]);
 
-$sm = new ServiceManager(['factories' => [
-    'db' => function() use ($config) {
-
-        // echo "DB\n";
-        $db = new Adapter($config['database']);
-
-        $db->getDriver()->getConnection()->connect();
-
-        return $db;
-    },
-    'queueManager' => function() use ($loader) {
-        return $loader->create('Queue\\QueueManager');
-    },
-    ]]);
-
-$loader->setServiceManager($sm);
-
-defined('APPLICATION_ENV') || define('APPLICATION_ENV', getenv('APPLICATION_ENV') ?: 'production');
+$loader->createServiceManager([
+        'db'            => DbFactory::creatorForServiceManager($config['database']),
+        'messageLoader' => 'Message\\MessageLoader',
+        'queueManager'  => 'Queue\\QueueManager',
+]);
 
 try {
     $args = new Getopt([
         'help|h'    => 'Display this help',
         'install|i' => 'Install the application',
         'listen|l'  => 'Listen to HL7 queue - DEFAULT action',
-        'queue|q=s' => 'Queue commands: rebuild, empty',
+        'queue|q=s' => 'Queue commands: rebuild, rerun',
         ]);
     $args->parse();
 

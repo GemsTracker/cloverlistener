@@ -56,9 +56,27 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $_socket;
 
     /**
+     *
+     * @var \Zalt\Loader\ProjectOverloader
+     */
+    protected $loader;
+
+    /**
+     *
+     * @var \Gems\Clover\Message\MessageLoader
+     */
+    protected $messageLoader;
+
+    /**
      * @var Stream
      */
     protected $logging = null;
+
+    /**
+     *
+     * @var \Gems\Clover\Queue\QueueManager
+     */
+    protected $queueManager;
 
     /**
      *
@@ -74,17 +92,6 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         parent::__construct($this->_socket);
 
         $this->on('data', [$this, 'onReceiving']);
-    }
-
-    /**
-     * Called after the check that all required registry values
-     * have been set correctly has run.
-     *
-     * @return void
-     */
-    public function afterRegistry()
-    {
-        $this->_initSegmentClassMap();
     }
 
     /**
@@ -142,15 +149,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     public function onReceiving($data, ConnectionInterface $connection)
     {
-        // $data contains a HL7 Payload
-        $unserializer = $this->loader->create('HL7\\Unserializer');
-
-        // Mainly to activate code completion. :)
-        if (! $unserializer instanceof Unserializer) {
-            throw new \Exception("Not a valid unserializer!");
-        }
-
-        $message = $unserializer->loadMessageFromString($data, $this->_segmentClassMap);
+        $message = $this->messageLoader->loadMessage($data);
 
         if (! $message) {
             echo "Invalid message send.\n";
@@ -171,12 +170,11 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         // $connection->end();
 
         if ($saveMessage && $messageId) {
-            $this->processForQueue($messageId, $message);
+            $this->queueManager->processMessage($messageId, $message);
         }
 
         unset($ack);
         unset($message);
-        unset($unserializer);
     }
 
     /**

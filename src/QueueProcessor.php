@@ -41,6 +41,18 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
     /**
      *
+     * @var \Gems\Clover\Message\MessageLoader
+     */
+    protected $messageLoader;
+
+    /**
+     *
+     * @var \Gems\Clover\Queue\QueueManager
+     */
+    protected $queueManager;
+
+    /**
+     *
      * @param string $action
      */
     public function __construct($action)
@@ -54,17 +66,6 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
     protected function _initQueueTable()
     {
         $this->_queueTable = new TableGateway($this->queueTableName, $this->db);
-    }
-
-    /**
-     * Called after the check that all required registry values
-     * have been set correctly has run.
-     *
-     * @return void
-     */
-    public function afterRegistry()
-    {
-        $this->_initSegmentClassMap();
     }
 
     /**
@@ -103,27 +104,20 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
         echo "Rebuilding\n";
 
-       // $data contains a HL7 Payload
-        $unserializer = $this->loader->create('HL7\\Unserializer');
-
-        // Mainly to activate code completion. :)
-        if (! $unserializer instanceof Unserializer) {
-            throw new \Exception("Not a valid unserializer!");
-        }
-
         $messages = $this->_messageTable->select()->toArray();
-
         foreach ($messages as $messageRow) {
-
-            $messageId = $messageRow['hm_id'];
-            $message   = $unserializer->loadMessageFromString($messageRow['hm_message'], $this->_segmentClassMap);
-            // echo "$messageId\n";
-            $this->queueManager->processForQueue($messageId, $message);
+            // echo $messageRow['hm_id'] . "\n";
+            $this->queueManager->processMessage(
+                    $messageRow['hm_id'],
+                    $this->messageLoader->loadMessage($messageRow['hm_message'])
+                    );
         }
     }
 
     public function rerun()
     {
+        echo "Rerun all commands\n";
+
         $sql = "SELECT *
             FROM hl7_queue INNER JOIN hl7_messages ON hl7_queue.hq_message_id = hl7_messages.hm_id
             ORDER BY hl7_queue.hq_queue_id ASC";
@@ -139,15 +133,9 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $resultSet->initialize($result);
 
         $queue = $resultSet->toArray();
-        $unserializer = $this->loader->create('HL7\\Unserializer');
-
-        // Mainly to activate code completion. :)
-        if (! $unserializer instanceof Unserializer) {
-            throw new \Exception("Not a valid unserializer!");
-        }
 
         foreach ($queue as $queueRow) {
-            $message = $unserializer->loadMessageFromString($queueRow['hm_message'], $this->_segmentClassMap);
+            $message = $this->messageLoader->loadMessage($queueRow['hm_message']);
             $this->queueManager->executeQueueItem($queueRow['hq_queue_id'],$queueRow['hq_action_class'], $message);
         }
     }
