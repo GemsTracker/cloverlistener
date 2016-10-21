@@ -66,11 +66,15 @@ class QueueManager implements TargetInterface
     {
         $classes = require CONFIG_DIR . '/queue.config.php';
 
+        $subLoader = $this->loader->createSubFolderOverloader('Clover\\Queue\\Action');
+
         $this->_actionClasses = array();
-        foreach ($classes as $actionClassName) {
-            $actionClass = $this->loader->create('Queue\\Action\\' . $actionClassName);
-            $this->_actionClasses[get_class($actionClass)] = $actionClass;
+        foreach ($classes as $actionName => $actionClassName) {
+            $actionClass = $subLoader->create($actionClassName);
+            $this->_actionClasses[$actionName] = $actionClass;
         }
+
+        unset($subLoader);
     }
 
     /**
@@ -116,10 +120,10 @@ class QueueManager implements TargetInterface
     {
         $output = false;
 
-        foreach ($this->_actionClasses as $actionClass => $action) {
+        foreach ($this->_actionClasses as $actionName => $action) {
             if ($action instanceof Action\QueueActionInterface) {
                 if ($action->isTriggered($messageId, $message)) {
-                    $queueId = $this->saveToQueue($messageId, $actionClass);
+                    $queueId = $this->saveToQueue($messageId, $actionName);
 
                     if ($queueId) {
                         $output = true;
@@ -136,14 +140,14 @@ class QueueManager implements TargetInterface
     /**
      *
      * @param int $messageId
-     * @param stromg $actionClass
+     * @param string $actionName
      * @return int The queue id of this message/action combo
      */
-    public function saveToQueue($messageId, $actionClass)
+    public function saveToQueue($messageId, $actionName)
     {
         $values = [
-            'hq_message_id'   => $messageId,
-            'hq_action_class' => $actionClass,
+            'hq_message_id'  => $messageId,
+            'hq_action_name' => $actionName,
             ];
 
         $result = $this->_queueTable->select($values);
