@@ -118,7 +118,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
             $messageId = $messageRow['hm_id'];
             $message   = $unserializer->loadMessageFromString($messageRow['hm_message'], $this->_segmentClassMap);
             // echo "$messageId\n";
-            $this->processForQueue($messageId, $message);
+            $this->queueManager->processForQueue($messageId, $message);
         }
     }
 
