@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS hl7_queue (
         hq_last_execution       DATETIME NULL DEFAULT NULL,
 
         hq_execution_result     VARCHAR(60) CHARACTER SET 'utf8' COLLATE utf8_unicode_ci NULL,
+        hq_execution_ok         BOOLEAN NOT NULL DEFAULT 0,
 
         hq_created              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         hq_changed              TIMESTAMP NOT NULL,

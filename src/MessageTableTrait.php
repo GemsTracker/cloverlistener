@@ -11,8 +11,6 @@
 
 namespace Gems\Clover;
 
-use Zend\Db\TableGateway\TableGateway;
-
 /**
  *
  *
@@ -25,13 +23,13 @@ use Zend\Db\TableGateway\TableGateway;
 trait MessageTableTrait
 {
     /**
-     * @var \Zend\Db\TableGateway\TableGateway The message table
+     * @var \Zalt\Db\TableGateway\TableGateway The message table
      */
     protected $_messageTable;
 
     /**
      *
-     * @var \Zend\Db\Adapter\AdapterInterface
+     * @var \Zalt\Db\DbBridge
      */
     protected $db;
 
@@ -45,6 +43,6 @@ trait MessageTableTrait
      */
     protected function _initMessageTable()
     {
-        $this->_messageTable = new TableGateway($this->messageTableName, $this->db);
+        $this->_messageTable = $this->db->createTableGateway($this->messageTableName);
     }
 }

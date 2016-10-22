@@ -13,10 +13,10 @@ namespace Gems\Clover\Queue;
 
 use Gems\HL7\Node\Message;
 
+use Zalt\Db\Sql\Literal\CurrentTimestampLiteral;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Sql\Literal;
-use Zend\Db\TableGateway\TableGateway;
 
 /**
  *
@@ -38,13 +38,13 @@ class QueueManager implements TargetInterface
     protected $_actionClasses;
 
     /**
-     * @var \Zend\Db\TableGateway\TableGateway The queue table
+     * @var \Zalt\Db\TableGateway\TableGateway The message table
      */
     protected $_queueTable ;
 
     /**
      *
-     * @var AdapterInterface
+     * @var \Zalt\Db\DbBridge
      */
     protected $db;
 
@@ -82,7 +82,7 @@ class QueueManager implements TargetInterface
      */
     protected function _initQueueTable()
     {
-        $this->_queueTable = new TableGateway($this->queueTableName, $this->db);
+        $this->_queueTable = $this->db->createTableGateway($this->queueTableName);
     }
 
     /**
@@ -97,15 +97,36 @@ class QueueManager implements TargetInterface
         $this->_initQueueTable();
     }
 
-    public function executeQueueItem($queueId, $actionClass, Message $message)
+    /**
+     *
+     * @param int $queueId
+     * @param Message $message
+     */
+    public function executeQueueItem($queueId, Message $message)
     {
-        if (isset($this->_actionClasses[$actionClass])) {
-            $action = $this->_actionClasses[$actionClass];
+        $where = ['hq_queue_id' => $queueId];
+
+        $row = $this->_queueTable->fetchRow($where);
+
+        if (isset($this->_actionClasses[$row['hq_action_name']])) {
+            $action = $this->_actionClasses[$row['hq_action_name']];
 
             if ($action instanceof Action\QueueActionInterface) {
-                if ($action->execute($queueId, $message)) {
-                    echo "Executed QueueId $queueId\n";
+                $preVals['hq_execution_attempts'] = $row['hq_execution_attempts'] + 1;
+                $preVals['hq_last_execution']     = new CurrentTimestampLiteral();
+
+                $this->_queueTable->update($preVals, $where);
+                $result = new Action\ActionResult();
+
+                $action->execute($queueId, $message, $result);
+
+                $posVals['hq_execution_result'] = $result->message;
+                $posVals['hq_execution_ok']     = $result->succes ? 1 : 0;
+                if ($result->succes) {
+                    $posVals['hq_execution_count'] = $row['hq_execution_count'] + 1;
                 }
+
+                $this->_queueTable->update($posVals, $where);
             }
         }
     }
@@ -114,11 +135,11 @@ class QueueManager implements TargetInterface
      *
      * @param int $messageId
      * @param Message $message
-     * @return boolean True when there is a message in the QUEUE
+     * @return array Array of queueId => actionName
      */
     public function processMessage($messageId, Message $message)
     {
-        $output = false;
+        $output = [];
 
         foreach ($this->_actionClasses as $actionName => $action) {
             if ($action instanceof Action\QueueActionInterface) {
@@ -126,9 +147,7 @@ class QueueManager implements TargetInterface
                     $queueId = $this->saveToQueue($messageId, $actionName);
 
                     if ($queueId) {
-                        $output = true;
-
-                        echo "QueueId $queueId\n";
+                        $output[] = $queueId;
                     }
                 }
             }
@@ -150,13 +169,13 @@ class QueueManager implements TargetInterface
             'hq_action_name' => $actionName,
             ];
 
-        $result = $this->_queueTable->select($values);
+        $row = $this->_queueTable->fetchRow($values);
 
-        if ($result->current()) {
-            return $result->current()->offsetGet('hq_queue_id');
+        if ($row && isset($row['hq_queue_id'])) {
+            return $row['hq_queue_id'];
         }
 
-        $values['hq_changed'] = new Literal('CURRENT_TIMESTAMP');
+        $values['hq_changed'] = new CurrentTimestampLiteral();
 
         if ($this->_queueTable->insert($values)) {
             return $this->_queueTable->getLastInsertValue();

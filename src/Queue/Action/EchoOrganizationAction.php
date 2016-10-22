@@ -28,13 +28,17 @@ class EchoOrganizationAction implements QueueActionInterface
      *
      * @param int $queueId
      * @param Message $message
+     * @param ActionResult $result
      * @return boolean True on success
      */
-    public function execute($queueId, Message $message = null)
+    public function execute($queueId, Message $message, ActionResult $result)
     {
-        echo $message->getMshSegment()->getSendingApplication() . "\n";
+        $result->setSucces();
+        $result->setMessage($message->getMshSegment()->getSendingApplication());
 
-        return true;
+        echo $result->message . "\n";
+
+        return $result->succes;
     }
 
     /**

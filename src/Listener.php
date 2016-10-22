@@ -170,7 +170,11 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         // $connection->end();
 
         if ($saveMessage && $messageId) {
-            $this->queueManager->processMessage($messageId, $message);
+            $queueIds = $this->queueManager->processMessage($messageId, $message);
+
+            foreach ($queueIds as $queueId) {
+                $this->queueManager->executeQueueItem($queueId, $message);
+            }
         }
 
         unset($ack);

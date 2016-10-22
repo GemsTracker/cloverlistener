@@ -11,10 +11,9 @@
 
 namespace Gems\Clover;
 
+use Zalt\Db\DbBridge;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
-use Zend\Db\Adapter\AdapterInterface;
-use Zend\Db\Adapter\Driver\StatementInterface;
 
 /**
  *
@@ -31,7 +30,7 @@ class Installer implements ApplicationInterface, TargetInterface
 
     /**
      *
-     * @var AdapterInterface
+     * @var DbBridge
      */
     protected $db;
 
@@ -43,7 +42,7 @@ class Installer implements ApplicationInterface, TargetInterface
      */
     public function checkRegistryRequestsAnswers()
     {
-        return $this->db instanceof AdapterInterface;
+        return $this->db instanceof DbBridge;
     }
 
     /**
@@ -65,16 +64,12 @@ class Installer implements ApplicationInterface, TargetInterface
                     // TODO: Export SQL Parser to Zalt
                     foreach (explode(";", $queries) as $query) {
                         if (trim($query)) {
-                            $stmt = $this->db->query($query);
+                            $this->db->execute($query);
 
-                            if ($stmt instanceof StatementInterface) {
-                                $result = $stmt->execute();
+                            $fileName = $file->getBasename();
 
-                                $fileName = $file->getBasename();
-
-                                // TODO: logging instead of echo
-                                echo "Executed script: $fileName successfully.\n";
-                            }
+                            // TODO: logging instead of echo
+                            echo "Executed script: $fileName successfully.\n";
                         }
                     }
                 }
