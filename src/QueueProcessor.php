@@ -133,8 +133,8 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $resultSet->initialize($result);
 
         $queue = $resultSet->toArray();
-
         foreach ($queue as $queueRow) {
+            // echo $queueRow['hq_queue_id'] . "\n";
             $message = $this->messageLoader->loadMessage($queueRow['hm_message']);
             $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message);
         }

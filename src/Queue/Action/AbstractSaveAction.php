@@ -83,7 +83,13 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
     public function execute($queueId, Message $message, ActionResult $result)
     {
         if ($this->isTriggered(null, $message)) {
-            $this->startProcess($this->_extractor->extractRow($message), $result);
+            $row = $this->_extractor->extractRow($message);
+            if ($row) {
+                $this->startProcess($row, $result);
+            } else {
+                $result->setSucces(false);
+                $result->setMessage("Missing key data");
+            }
         }
     }
 
