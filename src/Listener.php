@@ -42,7 +42,22 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      * @var array
      */
     protected $_config;
-
+    
+    /**
+     * The time in seconds to ping the database
+     * 
+     * During periods of inactivity the mysql server can close the connection
+     * due to inactivity. To prevent this we can ping the connection using this
+     * interval. If connection fails the application will exit with an errorlevel
+     * so respawning is possible.
+     * 
+     * Set to 0 to disable sending pings to the database. Mysql default timeout 
+     * is 28800 seconds which is 8 hours so choose a reasonable time here.
+     * 
+     * @var int
+     */
+    protected $_dbPingTime = 600;   // 10 minutes
+    
     /**
      *
      * @var \React\EventLoop\LoopInterface
@@ -88,8 +103,27 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         $this->_loop   = Factory::create();
         $this->_socket = new SocketServer($this->_loop);
+        
+        // Add a ping function to db each xx seconds to keep the connection alive
+        if (!$this->_dbPingTime === 0) {
+            $this->_loop->addPeriodicTimer($this->_dbPingTime, [$this, 'pingDb']);
+        }
 
         parent::__construct($this->_socket);
+        
+        /*
+        if (!defined('STDIN'))
+            define('STDIN', fopen('php://stdin', 'r'));
+        if (!defined('STDOUT'))
+            define('STDOUT', fopen('php://stdout', 'w'));
+        if (!defined('STDERR'))
+            define('STDERR', fopen('php://stderr', 'w'));
+        $logging = new Stream(STDOUT, $this->_loop);
+        $ip   = $this->config['ip'];
+        $port = $this->config['port'];
+        $logging->write("Starting server on $ip:$port" . PHP_EOL);
+        $this->initLogging($logging);
+         */
 
         $this->on('data', [$this, 'onReceiving']);
     }
@@ -149,6 +183,10 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     public function onReceiving($data, ConnectionInterface $connection)
     {
+        // Do something here to make sure the encoding is correct
+        // echo mb_check_encoding($data, 'WINDOWS-1252');
+        // echo mb_check_encoding($data, 'UTF-8');
+        // echo mb_convert_encoding($data, 'UTF-8', 'WINDOWS-1252');
         $message = $this->messageLoader->loadMessage($data);
 
         if (! $message) {
@@ -180,6 +218,18 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         unset($ack);
         unset($message);
     }
+    
+    /**
+     * Ping db to keep it alive and fail on error
+     * 
+     * When there is no activity mysql will close the connection. When this is picked up on an message, it will not be picked up.
+     */
+    public function pingDb()
+    {
+        if (@$this->db->getDriver()->getConnection()->getResource()->ping() === false) {
+            exit(255);
+        }
+    }
 
     /**
      * Start the main application
@@ -206,7 +256,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
             if (! $this->_messageTable) {
                 $this->_initMessageTable();
             }
-
+            
             $values = [
                 'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
                 'hm_type'       => $msh->getMessageType()->__toString(),

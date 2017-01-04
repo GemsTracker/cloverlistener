@@ -35,7 +35,7 @@ class MessageLoader implements TargetInterface
 
     /**
      *
-     * @var \Gems\Hl7\Unserializer
+     * @var \Gems\HL7\Unserializer
      */
     protected $_unserializer;
 
