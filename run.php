@@ -14,7 +14,7 @@ use Zend\Console\Getopt;
 
 defined('APPLICATION_ENV') || define('APPLICATION_ENV', getenv('APPLICATION_ENV') ?: 'production');
 defined('CONFIG_DIR') || define('CONFIG_DIR', __DIR__ . '/config');
-defined('VENDOR_DIR') || define('VENDOR_DIR', dirname(__DIR__). '/vendor');
+defined('VENDOR_DIR') || define('VENDOR_DIR', __DIR__. '/vendor');
 
 require VENDOR_DIR . '/autoload.php';
 
