@@ -104,12 +104,13 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
         echo "Rebuilding\n";
 
+        $check = false; // Message comes from DB and encoding was checked before
         $messages = $this->_messageTable->select()->toArray();
         foreach ($messages as $messageRow) {
             // echo $messageRow['hm_id'] . "\n";
             $this->queueManager->processMessage(
                     $messageRow['hm_id'],
-                    $this->messageLoader->loadMessage($messageRow['hm_message'])
+                    $this->messageLoader->loadMessage($messageRow['hm_message'], $check)
                     );
         }
     }
@@ -132,10 +133,11 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $resultSet = new ResultSet;
         $resultSet->initialize($result);
 
+        $check = false; // Message comes from DB and encoding was checked before
         $queue = $resultSet->toArray();
         foreach ($queue as $queueRow) {
             // echo $queueRow['hq_queue_id'] . "\n";
-            $message = $this->messageLoader->loadMessage($queueRow['hm_message']);
+            $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
             $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message);
         }
     }

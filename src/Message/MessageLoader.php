@@ -83,11 +83,12 @@ class MessageLoader implements TargetInterface
     /**
      *
      * @param string $hl7String A HL7 Payload
+     * @param boolean $checkEencoding Should stringencoding be checked
      * @return \Gems\HL7\Node\Message
      */
-    public function loadMessage($hl7String)
+    public function loadMessage($hl7String, $checkEncoding = true)
     {
-        return $this->_unserializer->loadMessageFromString($hl7String, $this->_segmentClassMap);
+        return $this->_unserializer->loadMessageFromString($hl7String, $this->_segmentClassMap, $checkEncoding);
     }
 
 }
