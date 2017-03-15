@@ -13,9 +13,6 @@
         "zendframework/zend-db": ">=2.8",
         "zendframework/zend-stdlib": ">=3.1"
     },
-    "bin": [
-        "cloverlistener.php"
-    ],
     "require-dev": {
         "phpunit/phpunit": "3.7.*"
     },
