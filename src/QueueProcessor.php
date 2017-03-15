@@ -111,18 +111,15 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $selectString = $sql->buildSqlString($select);
         $result = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);
 
-        if (! ($result instanceof ResultInterface && $result->isQueryResult())) {
+        if (! ($result instanceof ResultSet)) {
             return;
-        }
-        $resultSet = new ResultSet;
-        $resultSet->initialize($result);
+        }        
         
         $executed = 0;
         $success  = 0;
 
         $check = false; // Message comes from DB and encoding was checked before
-        $queue = $resultSet->toArray();
-        foreach ($queue as $queueRow) {
+        foreach ($result as $queueRow) {
             $executed++;
             // echo $queueRow['hq_queue_id'] . "\n";
             $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
