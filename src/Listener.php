@@ -10,18 +10,20 @@
 
 namespace Gems\Clover;
 
+use Gems\Clover\Message\MessageLoader;
+use Gems\Clover\Queue\QueueManager;
 use Gems\HL7\Node\Message;
 use Gems\HL7\Segment\MSHSegment;
-use Gems\HL7\Unserializer;
 use PharmaIntelligence\MLLP\Server;
 use React\EventLoop\Factory;
+use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
 use React\Socket\Server as SocketServer;
 use React\Stream\Stream;
+use Zalt\Loader\ProjectOverloader;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Adapter\AdapterInterface;
-use Zend\Db\TableGateway\TableGateway;
 
 /**
  *
@@ -36,6 +38,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 {
     use MessageTableTrait;
     use TargetTrait;
+    use InvokableCommandTrait;
 
     /**
      *
@@ -60,7 +63,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     
     /**
      *
-     * @var \React\EventLoop\LoopInterface
+     * @var LoopInterface
      */
     protected $_loop;
 
@@ -72,13 +75,13 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
     /**
      *
-     * @var \Zalt\Loader\ProjectOverloader
+     * @var ProjectOverloader
      */
     protected $loader;
 
     /**
      *
-     * @var \Gems\Clover\Message\MessageLoader
+     * @var MessageLoader
      */
     protected $messageLoader;
 
@@ -89,7 +92,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
     /**
      *
-     * @var \Gems\Clover\Queue\QueueManager
+     * @var QueueManager
      */
     protected $queueManager;
 

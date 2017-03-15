@@ -9,9 +9,13 @@
         "magnafacta/zalt-loader": "dev-master",
         "pharmaintelligence/mllp": "dev-master",
         "zendframework/zend-console": ">=2.6",
+        "zfcampus/zf-console": "^1.3",
         "zendframework/zend-db": ">=2.8",
         "zendframework/zend-stdlib": ">=3.1"
     },
+    "bin": [
+        "cloverlistener.php"
+    ],
     "require-dev": {
         "phpunit/phpunit": "3.7.*"
     },

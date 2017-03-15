@@ -11,14 +11,19 @@
 
 namespace Gems\Clover;
 
-use Gems\HL7\Node\Message;
-use Gems\HL7\Unserializer;
+use Exception;
+use Gems\Clover\Message\MessageLoader;
+use Gems\Clover\Queue\QueueManager;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
+use Zend\Db\Adapter\Adapter;
 use Zend\Db\Adapter\AdapterInterface;
 use Zend\Db\Adapter\Driver\ResultInterface;
 use Zend\Db\ResultSet\ResultSet;
+use Zend\Db\Sql\Select;
 use Zend\Db\Sql\Sql;
+use Zend\Db\TableGateway\TableGateway;
+use ZF\Console\Route;
 
 /**
  *
@@ -33,6 +38,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 {
     use MessageTableTrait;
     use TargetTrait;
+    use InvokableCommandTrait;
 
     /**
      * @var string
@@ -41,13 +47,13 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
     /**
      *
-     * @var \Gems\Clover\Message\MessageLoader
+     * @var MessageLoader
      */
     protected $messageLoader;
 
     /**
      *
-     * @var \Gems\Clover\Queue\QueueManager
+     * @var QueueManager
      */
     protected $queueManager;
 
@@ -55,7 +61,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
      *
      * @param string $action
      */
-    public function __construct($action)
+    public function __construct($action = null)
     {
         $this->_action = $action;
     }
@@ -81,7 +87,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
     /**
      *
-     * @return \Zend\Db\Sql\Select
+     * @return Select
      */
     protected function getQueueSelect()
     {
@@ -94,11 +100,50 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
     }
 
     /**
+     * Execute the sql, load the message from the database and execute it.
+     * 
+     * @param Select $select
+     * @return void
+     */
+    protected function queryExecute($select)
+    {
+        $sql = new Sql($this->db);
+        $selectString = $sql->buildSqlString($select);
+        $result = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);
+
+        if (! ($result instanceof ResultInterface && $result->isQueryResult())) {
+            return;
+        }
+        $resultSet = new ResultSet;
+        $resultSet->initialize($result);
+        
+        $executed = 0;
+        $success  = 0;
+
+        $check = false; // Message comes from DB and encoding was checked before
+        $queue = $resultSet->toArray();
+        foreach ($queue as $queueRow) {
+            $executed++;
+            // echo $queueRow['hq_queue_id'] . "\n";
+            $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
+            $result  = $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message);
+            
+            $success = $success + $result;
+        }
+        
+        echo sprintf("%d commands executed, %d successful, %d failed.\n", 
+                $executed, 
+                $success, 
+                $executed - $success
+        );
+    }
+
+    /**
      * Rebuild the queue using the message table
      *
-     * @throws \Exception
+     * @throws Exception
      */
-    public function rebuild()
+    public function rebuild($route = null)
     {
         $this->_initMessageTable();
 
@@ -115,31 +160,23 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         }
     }
 
-    public function rerun()
+    /**
+     *
+     * @param Route $route
+     */
+    public function rerun($route = null)
     {
-        echo "Rerun all commands\n";
+        $sql = $this->getQueueSelect();
+        if ($route instanceof Route && $route->matchedParam('failed')) {
+            echo "Rerun failed commands\n";
 
-        $sql = "SELECT *
-            FROM hl7_queue INNER JOIN hl7_messages ON hl7_queue.hq_message_id = hl7_messages.hm_id
-            ORDER BY hl7_queue.hq_queue_id ASC";
-
-        $stmt = $this->db->getDriver()->createStatement($sql);
-        $stmt->prepare();
-        $result = $stmt->execute();
-
-        if (! ($result instanceof ResultInterface && $result->isQueryResult())) {
-            return;
+            $sql->where('hq_execution_attempts > 0')
+                ->where('hq_execution_ok = 0');            
+        } else {
+            echo "Rerun all commands\n";            
         }
-        $resultSet = new ResultSet;
-        $resultSet->initialize($result);
 
-        $check = false; // Message comes from DB and encoding was checked before
-        $queue = $resultSet->toArray();
-        foreach ($queue as $queueRow) {
-            // echo $queueRow['hq_queue_id'] . "\n";
-            $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
-            $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message);
-        }
+        $this->queryExecute($sql);
     }
 
     /**
@@ -147,19 +184,30 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
      *
      * @return void
      */
-    public function run()
+    public function run($route = null)
     {
-        switch (strtolower($this->_action)) {
-            case 'rebuild':
-                $this->rebuild();
-                return;
+        // Fallback for old style
+        if (is_null($route)) {
+            switch (strtolower($this->_action)) {
+                case 'rebuild':
+                    $this->rebuild();
 
-            case 'rerun':
-                $this->rerun();
-                return;
+                case 'rerun':
+                    $this->rerun();
 
-            default:
-                echo "Missing or unknown action command: " . $this->_action . "\n";
+                default:
+                    echo "Missing or unknown action command: " . $this->_action . "\n";
+            }
+            return;
         }
+
+        // Still here? New style :)
+        // We will run the queue processing all not processed messages
+        echo "Run all new commands\n";
+
+        $sql = $this->getQueueSelect()
+                ->where('hq_execution_attempts = 0');
+
+        $this->queryExecute($sql);
     }
 }

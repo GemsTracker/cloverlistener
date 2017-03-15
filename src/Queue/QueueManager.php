@@ -101,6 +101,7 @@ class QueueManager implements TargetInterface
      *
      * @param int $queueId
      * @param Message $message
+     * @return int 1 when execute was successful
      */
     public function executeQueueItem($queueId, Message $message)
     {
@@ -127,8 +128,12 @@ class QueueManager implements TargetInterface
                 }
 
                 $this->_queueTable->update($posVals, $where);
+                
+                if ($result->succes) return 1;
             }
         }
+        
+        return 0;
     }
 
     /**

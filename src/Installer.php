@@ -11,6 +11,7 @@
 
 namespace Gems\Clover;
 
+use DirectoryIterator;
 use Zalt\Db\DbBridge;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
@@ -27,13 +28,14 @@ use Zalt\Loader\Target\TargetTrait;
 class Installer implements ApplicationInterface, TargetInterface
 {
     use TargetTrait;
+    use InvokableCommandTrait;
 
     /**
      *
      * @var DbBridge
      */
     protected $db;
-
+    
     /**
      * Should be called after answering the request to allow the Target
      * to check if all required registry values have been set correctly.
@@ -54,10 +56,10 @@ class Installer implements ApplicationInterface, TargetInterface
     {
         $dbConfig = dirname(__DIR__) . '/config/db';
 
-        $dir = new \DirectoryIterator($dbConfig);
+        $dir = new DirectoryIterator($dbConfig);
 
         foreach ($dir as $file) {
-            if ($file instanceof \DirectoryIterator) {
+            if ($file instanceof DirectoryIterator) {
                 if ($file->isFile()) {
                     $queries = file_get_contents($file->getPathname());
 
