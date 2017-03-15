@@ -37,7 +37,7 @@ $serviceManager = $loader->createServiceManager([
         'queueManager'   => 'Queue\\QueueManager',
         'queueProcessor' => 'QueueProcessor',
         'installer'      => 'Installer',
-        'listener'       => function () use ($config, $loader) { return $loader->create('Listener', $config); },
+        'listener'       => function () use ($config, $loader) { return $loader->create('Listener', $config['application']); },
 ]);
 
 $dispatcher = new Dispatcher($serviceManager);
