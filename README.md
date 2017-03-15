@@ -13,19 +13,21 @@ To install download a zip of the [latest release](https://github.com/GemsTracker
    ```
 2. Edit config/config.php
 3. Copy config/db.inc.php.dist to /config/db.inc.php and adjust database settings
-4. Run run.php with option install
+4. Run cloverlistener.php with option install
 
    ```bash
-   $ php run.php --install
+   $ php cloverlistener.php install
    ```
    
 You are now ready to run the service in the background, for example using a simple upstart script.
 
 ## Command line usage
 <pre>
-Usage: run.php [ options ]
---help|-h            Display this help
---install|-i         Install the application
---listen|-l          Listen to HL7 queue - DEFAULT action
---queue|-q <string>  Queue commands: rebuild, rerun
+Usage: cloverlistener.php [ options ]
+ autocomplete  Command autocompletion setup
+ help          Get help for individual commands
+ install       Install the application.
+ listen        Listen to HL7 queue.
+ queue         Manipulate the message queue
+ version       Display the version of the script
 </pre>

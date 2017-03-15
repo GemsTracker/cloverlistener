@@ -46,7 +46,7 @@ $dispatcher = new Dispatcher($serviceManager);
 $routes = array();
 if (file_exists(CONFIG_DIR . '/routes.php')) {
     $routes = include CONFIG_DIR . '/routes.php';
-} elseif (file_exists($__DIR__ . '/config/routes.php')) {
+} elseif (file_exists(__DIR__ . '/config/routes.php')) {
     $routes = include __DIR__ . '/config/routes.php';
 }
 
