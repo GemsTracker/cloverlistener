@@ -58,6 +58,7 @@ class MessageLoader implements TargetInterface
             'PV1' => $this->loader->find('HL7\\Segment\\PV1Segment'),
             'SCH' => $this->loader->find('HL7\\Segment\\SCHSegment'),
             'MRG' => $this->loader->find('HL7\\Segment\\MRGSegment'),
+            'NTE' => $this->loader->find('HL7\\Segment\\NTESegment'),
             ];
     }
 
