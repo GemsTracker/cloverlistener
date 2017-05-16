@@ -147,7 +147,43 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         echo "Rebuilding\n";
 
         $check = false; // Message comes from DB and encoding was checked before
-        $messages = $this->_messageTable->select()->toArray();
+        
+        $where = null;
+        if ($route instanceof Route && $route->matchedParam('from')) {
+            $from = $route->getMatchedParam('from');
+            $fromInt = $from + 0;
+            
+            if ( is_int($fromInt) && (string) $fromInt === $from) {
+                $where = ['hm_id >= ?' => $fromInt];    // Internal id, not the message id from the sending system
+            } else {
+                // Now check if it is a date
+                $parts = explode('-', $from);
+                if (count($parts) == 3) {
+                    list($year, $month, $day) = $parts;
+                    $date = sprintf('%04d-%02d-%02d', 
+                            (int) $year,
+                            (int) $month,
+                            (int) $day
+                            );
+                    if ($date === $from) {
+                        $where = ['hm_datetime >= ?' => $date];   // Message date, not moment received
+                    }
+                }
+            }
+            
+            if (is_null($where)) {
+                throw new Exception('Unrecognized format for --from parameter, use integer or date yyyy-mm-dd');
+            }
+        }
+        
+        $sql    = $this->_messageTable->getSql();
+        $select = $sql->select()
+                ->columns(['hm_id', 'hm_message'])  // Save some overhead by only using the columns we need
+                ->where($where);
+        
+        $selectString = $sql->buildSqlString($select);
+        $messages = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);     // Don't use prepared statement
+
         foreach ($messages as $messageRow) {
             // echo $messageRow['hm_id'] . "\n";
             $this->queueManager->processMessage(
