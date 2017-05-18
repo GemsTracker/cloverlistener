@@ -27,7 +27,18 @@ Usage: cloverlistener.php [ options ]
  autocomplete  Command autocompletion setup
  help          Get help for individual commands
  install       Install the application.
- listen        Listen to HL7 queue.
+ listen        Listen to HL7 messages.
  queue         Manipulate the message queue
  version       Display the version of the script
 </pre>
+
+Most common usage is to listen and execute the message in one go. You can achieve this by using:
+```bash
+$ php cloverlistener.php listen
+```
+
+When you want to have two instances, one to listen and place messages in the queue and one to process the queue you need to run the following commands, each in their own process:
+```bash
+$ php cloverlistener.php listen norun
+$ php cloverlistener.php queue run
+```

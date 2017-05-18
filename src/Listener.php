@@ -72,6 +72,13 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      * @var SocketServer
      */
     protected $_socket;
+    
+    /**
+     * Should we only listen or also process a message?
+     * 
+     * @var bool 
+     */
+    protected $runQueue = true;
 
     /**
      *
@@ -177,6 +184,12 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     {
         return $message->getMshSegment() instanceof MSHSegment;
     }
+    
+    public function norun()
+    {
+        $this->runQueue = false;
+        $this->run();
+    }
 
     /**
      * The action when a message is saved
@@ -212,9 +225,10 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         if ($saveMessage && $messageId) {
             $queueIds = $this->queueManager->processMessage($messageId, $message);
-
-            foreach ($queueIds as $queueId) {
-                $this->queueManager->executeQueueItem($queueId, $message);
+            if ($this->runQueue) {
+                foreach ($queueIds as $queueId) {
+                    $this->queueManager->executeQueueItem($queueId, $message);
+                }
             }
         }
 

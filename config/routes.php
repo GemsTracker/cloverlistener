@@ -15,8 +15,14 @@ $sm->setFactory($name, $factory);
 return array(
     array(
         'name' => 'listen',
-        'route' => 'listen',
-        'short_description' => 'Listen to HL7 queue.',        
+        'route' => 'listen [<command>]',
+        'short_description' => 'Listen to HL7 messages.',
+        'description' => 'Listen to HL7 MLLP messages. Default command is run.',
+        'options_descriptions' => [
+            'run'      => 'Listen to messages, place in queue and execute in one go',
+            '',
+            'norun'    => 'Just listen and place in the queue, use queue run command to process the queue in another thread',
+        ],
         'defaults' => array(
             'command' => 'run',            
         ),
