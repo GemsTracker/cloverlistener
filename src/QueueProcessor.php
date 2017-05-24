@@ -101,38 +101,56 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
     /**
      * Execute the sql, load the message from the database and execute it.
-     * 
+     *
      * @param Select $select
      * @return void
      */
-    protected function queryExecute($select)
+    protected function queryExecute($select, $deferred = false)
     {
         $sql = new Sql($this->db);
         $selectString = $sql->buildSqlString($select);
         $result = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);
-
-        if (! ($result instanceof ResultSet)) {
-            return;
-        }        
         
+        if (! ($result instanceof ResultSet) || $result->count() == 0) {
+            return;
+        }
+        
+        $last = $result->count();
+
         $executed = 0;
         $success  = 0;
 
+        if ($deferred == true) {
+            $file = fopen('appointments.txt', 'w');
+        }
+
         $check = false; // Message comes from DB and encoding was checked before
+        $firstLast = 'first';
         foreach ($result as $queueRow) {
             $executed++;
             // echo $queueRow['hq_queue_id'] . "\n";
             $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
-            $result  = $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message);
             
+            if ($executed == $last && $deferred === true) {
+                $firstLast = 'last';
+            }
+                
+            $result  = $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message, $deferred, $firstLast);
+                        
+            $firstLast = null;
+
             $success = $success + $result;
         }
-        
-        echo sprintf("%d commands executed, %d successful, %d failed.\n", 
-                $executed, 
-                $success, 
+
+        echo sprintf("%d commands executed, %d successful, %d failed.\n",
+                $executed,
+                $success,
                 $executed - $success
         );
+
+        if ($deferred == true) {            
+            return $executed;
+        }
     }
 
     /**
@@ -147,12 +165,12 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         echo "Rebuilding\n";
 
         $check = false; // Message comes from DB and encoding was checked before
-        
+
         $where = null;
         if ($route instanceof Route && $route->matchedParam('from')) {
             $from = $route->getMatchedParam('from');
             $fromInt = $from + 0;
-            
+
             if ( is_int($fromInt) && (string) $fromInt === $from) {
                 $where = ['hm_id >= ?' => $fromInt];    // Internal id, not the message id from the sending system
             } else {
@@ -160,7 +178,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
                 $parts = explode('-', $from);
                 if (count($parts) == 3) {
                     list($year, $month, $day) = $parts;
-                    $date = sprintf('%04d-%02d-%02d', 
+                    $date = sprintf('%04d-%02d-%02d',
                             (int) $year,
                             (int) $month,
                             (int) $day
@@ -170,17 +188,17 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
                     }
                 }
             }
-            
+
             if (is_null($where)) {
                 throw new Exception('Unrecognized format for --from parameter, use integer or date yyyy-mm-dd');
             }
         }
-        
+
         $sql    = $this->_messageTable->getSql();
         $select = $sql->select()
                 ->columns(['hm_id', 'hm_message'])  // Save some overhead by only using the columns we need
                 ->where($where);
-        
+
         $selectString = $sql->buildSqlString($select);
         $messages = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);     // Don't use prepared statement
 
@@ -204,9 +222,9 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
             echo "Rerun failed commands\n";
 
             $sql->where('hq_execution_attempts > 0')
-                ->where('hq_execution_ok = 0');            
+                ->where('hq_execution_ok = 0');
         } else {
-            echo "Rerun all commands\n";            
+            echo "Rerun all commands\n";
         }
 
         $this->queryExecute($sql);
@@ -235,12 +253,44 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         }
 
         // Still here? New style :)
-        // We will run the queue processing all not processed messages
-        echo "Run all new commands\n";
+        if ($route instanceof Route && $route->matchedParam('nonstop')) {
+            // We want to run in continuous mode
+            $this->runContinuous();
+        } else {
+            // We will run the queue processing all not processed messages
+            echo "Run all new commands\n";
 
+            $sql = $this->getQueueSelect()
+                    ->where('hq_execution_attempts = 0');
+
+            $this->queryExecute($sql);
+        }
+    }
+
+    public function runContinuous()
+    {
+        $loop = \React\EventLoop\Factory::create();
+
+        $master = $this;
+
+        $loop->addPeriodicTimer(3, function($timer) use($master) {            
+            // This step might take a while so we don't run every three seconds when there is a queue
+            $records = $master->runSingle();
+            if ($records == 0) {
+                // When there was no activity, we sleep for a while
+                sleep(3);
+            }
+        });
+        $loop->run();
+    }
+
+    public function runSingle()
+    {
         $sql = $this->getQueueSelect()
-                ->where('hq_execution_attempts = 0');
+                ->where('hq_execution_attempts = 0')
+                ->where(['hq_action_name like ?' => 'saveAppointment%'])
+                ->limit(300);
 
-        $this->queryExecute($sql);
+        return $this->queryExecute($sql, true);
     }
 }

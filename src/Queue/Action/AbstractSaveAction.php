@@ -28,6 +28,20 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
     use TargetTrait;
 
     /**
+     * The call for the deferred command
+     *
+     * @var string
+     */
+    protected $_deferredCommand;
+
+    /**
+     * The filename to use for storing deferred files
+     *
+     * @var string
+     */
+    protected $_deferredFilename;
+
+    /**
      * The code to call the GT installation
      *
      * @var string
@@ -50,9 +64,11 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
      *
      * @param string $executionCommand The code to call the GT installation
      */
-    public function __construct($executionCommand)
+    public function __construct($executionCommand, $deferredCommand = null, $deferredFilename = null)
     {
         $this->_executionCommand = $executionCommand;
+        $this->_deferredCommand = $deferredCommand;
+        $this->_deferredFilename = $deferredFilename;
     }
 
     /**
@@ -73,24 +89,51 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
      */
     abstract protected function getExtractor();
 
+    public function deferredProcess(array $data, ActionResult $result, $firstLast)
+    {
+        $file = $this->getFileHandle();
+
+        if ($firstLast === 'first') {
+            fputcsv($file, array_keys($data));
+        }
+
+        fputcsv($file, $data);
+        fclose($file);
+
+        if ($firstLast === 'last') {
+            $this->startDeferredProcess();
+        }
+    }
+
     /**
      *
      * @param int $queueId
      * @param Message $message
      * @param ActionResult $result
+     * @param boolean $deferred
+     * @param string $firstLast
      * @return boolean True on success
      */
-    public function execute($queueId, Message $message, ActionResult $result)
+    public function execute($queueId, Message $message, ActionResult $result, $deferred = true, $firstLast = null)
     {
         if ($this->isTriggered(null, $message)) {
             $row = $this->_extractor->extractRow($message);
             if ($row) {
-                $this->startProcess($row, $result);
+                if ($deferred) {
+                    $this->deferredProcess($row, $result, $firstLast);
+                } else {
+                    $this->startProcess($row, $result);
+                }
             } else {
                 $result->setSucces(false);
                 $result->setMessage("Missing key data");
             }
         }
+    }
+
+    protected function getFileHandle()
+    {
+        return fopen($this->_deferredFilename, 'a');
     }
 
     /**
@@ -101,6 +144,20 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
      * @return boolean
      */
     // abstract public function isTriggered($messageId, Message $message)
+    
+    public function startDeferredProcess(array $data, ActionResult $result)
+    {
+        $execute = $this->_deferredCommand;
+
+        $output = [];
+        $status = 0;
+        exec($execute, $output, $status);
+
+        $result->setSucces(0 === $status);
+        $result->setMessage(trim(implode("\n", $output)));
+
+        echo $result->message . "\n";
+    }
 
     /**
      *

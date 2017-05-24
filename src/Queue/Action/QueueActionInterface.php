@@ -29,9 +29,11 @@ interface QueueActionInterface
      * @param int $queueId
      * @param Message $message
      * @param ActionResult $result
+     * @param boolean $deferred
+     * @param string $firstLast
      * @return boolean True on success
      */
-    public function execute($queueId, Message $message, ActionResult $result);
+    public function execute($queueId, Message $message, ActionResult $result, $deferred = false, $firstLast = null);
 
     /**
      * Return true if this action is triggered by this message

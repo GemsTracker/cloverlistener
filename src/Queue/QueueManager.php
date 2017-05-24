@@ -101,9 +101,11 @@ class QueueManager implements TargetInterface
      *
      * @param int $queueId
      * @param Message $message
+     * @param bool $deferred
+     * @param string $firstLast
      * @return int 1 when execute was successful
      */
-    public function executeQueueItem($queueId, Message $message)
+    public function executeQueueItem($queueId, Message $message, $deferred = false, $firstLast = null)
     {
         $where = ['hq_queue_id' => $queueId];
 
@@ -119,13 +121,15 @@ class QueueManager implements TargetInterface
                 $this->_queueTable->update($preVals, $where);
                 $result = new Action\ActionResult();
 
-                $action->execute($queueId, $message, $result);
+                $action->execute($queueId, $message, $result, $deferred, $firstLast);
 
                 $posVals['hq_execution_result'] = $result->message;
                 $posVals['hq_execution_ok']     = $result->succes ? 1 : 0;
                 if ($result->succes) {
                     $posVals['hq_execution_count'] = $row['hq_execution_count'] + 1;
                 }
+                
+                $posVals['hq_changed']     = new CurrentTimestampLiteral();
 
                 $this->_queueTable->update($posVals, $where);
                 
@@ -160,7 +164,7 @@ class QueueManager implements TargetInterface
 
         return $output;
     }
-
+    
     /**
      *
      * @param int $messageId

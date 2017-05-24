@@ -24,6 +24,8 @@ use Gems\HL7\Segment\PIDSegment;
  */
 class SaveRespondentAction extends AbstractSaveAction
 {
+    protected $_deferredFilename = 'respondents-hl7.csv';
+    
     /**
      * Initialize the extractor
      */

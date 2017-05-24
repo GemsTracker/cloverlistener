@@ -39,11 +39,12 @@ return array(
     ),
     array(
         'name' => 'queue',
-        'route' => '[<command>] [--failed] [--from=]',
+        'route' => '[<command>] [--failed] [--from=] [--nonstop]',
         'description' => 'Manipulate the message queue, using a command and optional flags. Default command is run.',
         'short_description' => 'Manipulate the message queue',
         'options_descriptions' => [
             'run'      => 'Run the queue',
+            '--nonstop After finishing the first run, keep polling every 5 seconds',
             '',
             'rerun'    => 'Execute messages again, default will be rerun all messages. Use optionals flag to modify behaviour.',
             '--failed  Only rerun failed messages',

@@ -30,7 +30,11 @@ if (defined('GTIMPORT_EXEC_CMD')) {
     $exec = 'php -f "' . dirname(dirname(__DIR__)) . '\\htdocs\\index.php" -- ';
 }
 
+
+/*
+ * When using deferred mode, you should only process one type of action at a time
+ */
 return [
-    'saveRespondent'  => ['SaveRespondentAction', $exec . 'respondent simple-api'],
-    'saveAppointment' => ['SaveAppointmentAction', $exec . 'calendar simple-api'],
+    'saveRespondent'  => ['SaveRespondentAction', $exec . 'respondent simple-api', $exec . 'file-import import id=respondents-hl7.csv', 'respondents-hl7.csv'],
+    'saveAppointment' => ['SaveAppointmentAction', $exec . 'calendar simple-api', $exec . 'file-import import id=appointments-hl7.csv', 'appointments-hl7.csv'],
 ];

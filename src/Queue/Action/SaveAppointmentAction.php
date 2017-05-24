@@ -24,6 +24,7 @@ use Gems\HL7\Segment\SCHSegment;
  */
 class SaveAppointmentAction extends AbstractSaveAction
 {
+    protected $_deferredFilename = 'appointments-hl7.csv';
     /**
      * Initialize the extractor
      */
