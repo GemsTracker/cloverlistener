@@ -286,9 +286,12 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
     public function runSingle()
     {
+        $classes = require CONFIG_DIR . '/queue.config.php';
+        $actionNames = array_keys($classes);
+        
         $sql = $this->getQueueSelect()
                 ->where('hq_execution_attempts = 0')
-                ->where(['hq_action_name like ?' => 'saveAppointment%'])
+                ->where('hq_action_name', $actionNames)
                 ->limit(300);
 
         return $this->queryExecute($sql, true);
