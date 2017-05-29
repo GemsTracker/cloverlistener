@@ -291,7 +291,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         
         $sql = $this->getQueueSelect()
                 ->where('hq_execution_attempts = 0')
-                ->where('hq_action_name', $actionNames)
+                ->where(['hq_action_name' => $actionNames])
                 ->limit(300);
 
         return $this->queryExecute($sql, true);
