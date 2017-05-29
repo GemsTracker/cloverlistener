@@ -101,7 +101,9 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
         fclose($file);
 
         if ($firstLast === 'last') {
-            $this->startDeferredProcess();
+            $this->startDeferredProcess($result);
+        } else {
+            $result->setSucces();
         }
     }
 
@@ -145,7 +147,7 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
      */
     // abstract public function isTriggered($messageId, Message $message)
     
-    public function startDeferredProcess(array $data, ActionResult $result)
+    public function startDeferredProcess(ActionResult $result)
     {
         $execute = $this->_deferredCommand;
 
