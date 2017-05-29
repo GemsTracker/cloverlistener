@@ -91,16 +91,16 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
 
     public function deferredProcess(array $data, ActionResult $result, $firstLast)
     {
-        $file = $this->getFileHandle();
+        $file = $this->getFileHandle($firstLast);
 
-        if ($firstLast === 'first') {
+        if (strpos($firstLast, 'first') !== false) {
             fputcsv($file, array_keys($data));
         }
 
         fputcsv($file, $data);
         fclose($file);
 
-        if ($firstLast === 'last') {
+        if (strpos($firstLast, 'last') !== false) {
             $this->startDeferredProcess($result);
         } else {
             $result->setSucces();
@@ -133,9 +133,14 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
         }
     }
 
-    protected function getFileHandle()
+    protected function getFileHandle($firstLast)
     {
-        return fopen($this->_deferredFilename, 'a');
+        if (strpos($firstLast,'first') !== false) {
+            $mode = 'w';
+        } else {
+            $mode = 'a';
+        }
+        return fopen($this->_deferredFilename, $mode);
     }
 
     /**

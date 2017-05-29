@@ -120,10 +120,6 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $executed = 0;
         $success  = 0;
 
-        if ($deferred == true) {
-            $file = fopen('appointments.txt', 'w');
-        }
-
         $check = false; // Message comes from DB and encoding was checked before
         $firstLast = 'first';
         foreach ($result as $queueRow) {
@@ -132,7 +128,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
             $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
             
             if ($executed == $last && $deferred === true) {
-                $firstLast = 'last';
+                $firstLast .= 'last';
             }
                 
             $result  = $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message, $deferred, $firstLast);
