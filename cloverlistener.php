@@ -25,7 +25,6 @@ $config = require(CONFIG_DIR . '/config.php');
 
 $loader = new ProjectOverloader([
     $config['project']['name'],
-    'Gems\\Clover',
     'Gems',
     'PharmaIntelligence',
     ]);
@@ -33,11 +32,11 @@ $loader = new ProjectOverloader([
 // Add to this in your own routes.php
 $serviceManager = $loader->createServiceManager([
         'db'             => DbFactory::creatorForServiceManager($config['database']),
-        'messageLoader'  => 'Message\\MessageLoader',
-        'queueManager'   => 'Queue\\QueueManager',
-        'queueProcessor' => 'QueueProcessor',
-        'installer'      => 'Installer',
-        'listener'       => function () use ($config, $loader) { return $loader->create('Listener', $config['application']); },
+        'messageLoader'  => 'Clover\\Message\\MessageLoader',
+        'queueManager'   => 'Clover\\Queue\\QueueManager',
+        'queueProcessor' => 'Clover\\QueueProcessor',
+        'installer'      => 'Clover\\Installer',
+        'listener'       => function () use ($config, $loader) { return $loader->create('Clover\\Listener', $config['application']); },
 ]);
 
 $dispatcher = new Dispatcher($serviceManager);
