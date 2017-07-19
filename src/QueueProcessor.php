@@ -251,7 +251,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         }
 
         // Still here? New style :)
-        if ($route instanceof Route && $route->matchedParam('nonstop')) {
+        if ($route instanceof Route && $route->getMatchedParam('nonstop', false)) {
             // We want to run in continuous mode
             $this->runContinuous();
         } else {
