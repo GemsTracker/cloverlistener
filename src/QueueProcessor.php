@@ -192,8 +192,10 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
         $sql    = $this->_messageTable->getSql();
         $select = $sql->select()
-                ->columns(['hm_id', 'hm_message'])  // Save some overhead by only using the columns we need
-                ->where($where);
+                ->columns(['hm_id', 'hm_message']);  // Save some overhead by only using the columns we need
+        if (!is_null($where)) {
+            $select->where($where);
+        }
 
         $selectString = $sql->buildSqlString($select);
         $messages = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);     // Don't use prepared statement
@@ -214,7 +216,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
     public function rerun($route = null)
     {
         $sql = $this->getQueueSelect();
-        if ($route instanceof Route && $route->matchedParam('failed')) {
+        if ($route instanceof Route && $route->getMatchedParam('failed', false)) {
             echo "Rerun failed commands\n";
 
             $sql->where('hq_execution_attempts > 0')
