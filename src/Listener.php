@@ -74,6 +74,13 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $_socket;
     
     /**
+     * To hold partial messages
+     * 
+     * @var string
+     */
+    protected $_stack = null;
+    
+    /**
      * Should we only listen or also process a message?
      * 
      * @var bool 
@@ -148,13 +155,38 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     {
         return $this->db instanceof AdapterInterface;
     }
+    
+    /**
+     * A message can be partial as we are reading from a buffer. Put it on a stack when it is not complete (yet)
+     * 
+     * @param ConnectionInterface $connection
+     */
+    public function handleRequest(ConnectionInterface $connection) {
+        $this->emit('connection', array($connection));
+        $connection->on('data', function($data) use ($connection) {
+            try {
+                if (!is_null($this->_stack)) {
+                    $data = $this->_stack . $data;
+                    $this->_stack = null;
+                }
+                $data = MLLPParser::unwrap($data);
+                $this->emit('data', array($data, $connection));
+            } catch(\InvalidArgumentException $e) {
+                // save the partial message
+                $this->_stack = $data;
+                // Do not stop yet
+                //$this->handleInvalidMLLPEnvelope($data, $connection);
+                $this->emit('error', array('Invalid MLLP envelope. Received: "'.$data.'"' . $e->getMessage()));
+            }
+        });
+    }
 
     public function initLogging(Stream $logging)
     {
         $this->logging = $logging;
 
         // Log connection info
-        $this->on('connection', function(ConnectionInterface $connection) use($logging) {
+        $this->on('connection', function(ConnectionInterface $connection) use($logging) {            
             $logging->write('Connection from: ' . $connection->getRemoteAddress() . PHP_EOL);
         });
 
@@ -190,7 +222,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->runQueue = false;
         $this->run();
     }
-
+    
     /**
      * The action when a message is saved
      *
@@ -208,8 +240,9 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         if (! $message) {
             echo "Invalid message send.\n";
         }
-
+        
         $saveMessage = $this->isMessageSaveable($message);
+        // $saveMessage = false;
         // echo "Save msg: $saveMessage\n";
 
         if ($saveMessage)  {
