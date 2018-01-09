@@ -15,6 +15,7 @@ use Gems\Clover\Queue\QueueManager;
 use Gems\HL7\Node\Message;
 use Gems\HL7\Segment\MSHSegment;
 use PharmaIntelligence\MLLP\Server;
+use PharmaIntelligence\MLLP\MLLPParser;
 use React\EventLoop\Factory;
 use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
