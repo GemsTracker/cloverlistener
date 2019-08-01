@@ -132,7 +132,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         if (isset($this->config['logfile'])) {
             $logging = new Stream(fopen($this->config['logfile'], 'a'), $this->_loop);
             $logging->write(sprintf(
-                    "Starting server on $%s:%s" . PHP_EOL,
+                    "Starting server on %s:%s" . PHP_EOL,
                     $this->config['ip'],
                     $this->config['port']
                     ));
