@@ -62,6 +62,12 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
 
     /**
      *
+     * @var resource
+     */
+    public $logFile;
+
+    /**
+     *
      * @param string $executionCommand The code to call the GT installation
      */
     public function __construct($executionCommand, $deferredCommand = null, $deferredFilename = null)
@@ -151,7 +157,7 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
      * @return boolean
      */
     // abstract public function isTriggered($messageId, Message $message)
-    
+
     public function startDeferredProcess(ActionResult $result)
     {
         $execute = $this->_deferredCommand;
@@ -179,6 +185,9 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
         foreach ($data as $field => $value) {
             $execute .= " $field=" . escapeshellarg($value);
         }
+        if ($this->logFile) {
+            fwrite($this->logFile, $execute . PHP_EOL);
+        }
         // echo $execute . "\n\n";
         // return;
 
@@ -189,6 +198,9 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
         $result->setSucces(0 === $status);
         $result->setMessage(trim(implode("\n", $output)));
 
+        if ($this->logFile) {
+            fwrite($this->logFile, $result->message . PHP_EOL . PHP_EOL);
+        }
         echo $result->message . "\n";
     }
 }

@@ -38,6 +38,12 @@ class QueueManager implements TargetInterface
     protected $_actionClasses;
 
     /**
+     *
+     * @var resource
+     */
+    protected $_logFile;
+
+    /**
      * @var \Zalt\Db\TableGateway\TableGateway The message table
      */
     protected $_queueTable ;
@@ -59,6 +65,14 @@ class QueueManager implements TargetInterface
      */
     protected $queueTableName = 'hl7_queue';
 
+    public function __construct($options = [])
+    {
+        if (isset($options['logfile'])) {
+            $this->_logFile = fopen($options['logfile'], 'a');
+            fwrite($this->_logFile, 'Started queue log' . PHP_EOL);
+        }
+    }
+
     /**
      * Load the action classes into an array
      */
@@ -71,6 +85,10 @@ class QueueManager implements TargetInterface
         $this->_actionClasses = array();
         foreach ($classes as $actionName => $actionClassName) {
             $actionClass = $subLoader->create($actionClassName);
+
+            if ($this->_logFile) {
+                $actionClass->logFile = $this->_logFile;
+            }
             $this->_actionClasses[$actionName] = $actionClass;
         }
 
@@ -128,15 +146,15 @@ class QueueManager implements TargetInterface
                 if ($result->succes) {
                     $posVals['hq_execution_count'] = $row['hq_execution_count'] + 1;
                 }
-                
+
                 $posVals['hq_changed']     = new CurrentTimestampLiteral();
 
                 $this->_queueTable->update($posVals, $where);
-                
+
                 if ($result->succes) return 1;
             }
         }
-        
+
         return 0;
     }
 
@@ -164,7 +182,7 @@ class QueueManager implements TargetInterface
 
         return $output;
     }
-    
+
     /**
      *
      * @param int $messageId

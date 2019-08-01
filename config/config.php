@@ -2,22 +2,26 @@
 
 require __DIR__ . '/db.inc.php';
 
-return array(
+return [
     /* Application configuration */
-    'application' => array(
+    'application' => [
         'ip'       => gethostbyname(gethostname()), // The ip address of this machine
         'port'     => 23887,                        // The port it will listen on
-    ),
+        'logfile'  => defined('LOG_LISTENER') ? LOG_DIR . '/' . LOG_LISTENER : null,
+        ],
     /*  Database connector */
-    'database'    => array(
+    'database'    => [
         'driver'   => 'Mysqli',
         'database' => DATABASE,
         'username' => USER,
         'password' => PASSWD,
         'charset'  => 'utf8',
-        'hostname' => HOST
-    ),
-    'project'     => array(
+        'hostname' => HOST,
+        ],
+    'project'     => [
         'name'     => 'Clover',
-    ),
-);
+        ],
+    'queue'       => [
+        'logfile'  => defined('LOG_QUEUE') ? LOG_DIR . '/' . LOG_QUEUE : null,
+    ],
+];

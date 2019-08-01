@@ -13,12 +13,23 @@ use Zalt\Loader\ProjectOverloader;
 use Zend\Console\Getopt;
 
 defined('APPLICATION_ENV') || define('APPLICATION_ENV', getenv('APPLICATION_ENV') ?: 'production');
-defined('CONFIG_DIR') || define('CONFIG_DIR', __DIR__ . '/config');
-defined('VENDOR_DIR') || define('VENDOR_DIR', __DIR__. '/vendor');
+defined('CONFIG_DIR')      || define('CONFIG_DIR', __DIR__ . '/config');
+defined('LOG_DIR')         || define('LOG_DIR',    __DIR__ . '/var/logs');
+defined('VENDOR_DIR')      || define('VENDOR_DIR', __DIR__ . '/vendor');
+
+if (! file_exists(LOG_DIR)) {
+    mkdir(LOG_DIR, 0777, true);
+}
+ini_set('error_log', LOG_DIR . '/php_errors.log');
 
 require VENDOR_DIR . '/autoload.php';
 
 $config = require(CONFIG_DIR . '/config.php');
+if (isset($config['queue'])) {
+    $queueOptions = [$config['queue']];
+} else {
+    $queueOptions = [];
+}
 
 $loader = new ProjectOverloader([
     $config['project']['name'],
@@ -30,7 +41,7 @@ $loader = new ProjectOverloader([
 $loader->createServiceManager([
         'db'            => DbFactory::creatorForServiceManager($config['database']),
         'messageLoader' => 'Message\\MessageLoader',
-        'queueManager'  => 'Queue\\QueueManager',
+        'queueManager'  => ['Queue\\QueueManager', $queueOptions],
 ]);
 
 try {
@@ -38,7 +49,7 @@ try {
         'help|h'    => 'Display this help',
         'install|i' => 'Install the application',
         'listen|l'  => 'Listen to HL7 queue - DEFAULT action',
-        'queue|q=s' => 'Queue commands: rebuild, rerun',
+        'queue|q=s' => 'Queue commands: all, rebuild, rerun',
         ]);
     $args->parse();
 

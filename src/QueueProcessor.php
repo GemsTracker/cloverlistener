@@ -110,11 +110,11 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $sql = new Sql($this->db);
         $selectString = $sql->buildSqlString($select);
         $result = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);
-        
+
         if (! ($result instanceof ResultSet) || $result->count() == 0) {
             return;
         }
-        
+
         $last = $result->count();
 
         $executed = 0;
@@ -126,13 +126,13 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
             $executed++;
             // echo $queueRow['hq_queue_id'] . "\n";
             $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
-            
+
             if ($executed == $last && $deferred === true) {
                 $firstLast .= 'last';
             }
-                
+
             $result  = $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message, $deferred, $firstLast);
-                        
+
             $firstLast = null;
 
             $success = $success + $result;
@@ -144,7 +144,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
                 $executed - $success
         );
 
-        if ($deferred == true) {            
+        if ($deferred == true) {
             return $executed;
         }
     }
@@ -238,11 +238,18 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         // Fallback for old style
         if (is_null($route)) {
             switch (strtolower($this->_action)) {
+                case 'all':
+                    $this->rebuild();
+                    $this->rerun();
+                    break;
+
                 case 'rebuild':
                     $this->rebuild();
+                    break;
 
                 case 'rerun':
                     $this->rerun();
+                    break;
 
                 default:
                     echo "Missing or unknown action command: " . $this->_action . "\n";
@@ -271,7 +278,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
         $master = $this;
 
-        $loop->addPeriodicTimer(3, function($timer) use($master) {            
+        $loop->addPeriodicTimer(3, function($timer) use($master) {
             // This step might take a while so we don't run every three seconds when there is a queue
             $records = $master->runSingle();
             if ($records == 0) {
@@ -286,7 +293,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
     {
         $classes = require CONFIG_DIR . '/queue.config.php';
         $actionNames = array_keys($classes);
-        
+
         $sql = $this->getQueueSelect()
                 ->where('hq_execution_attempts = 0')
                 ->where(['hq_action_name' => $actionNames])

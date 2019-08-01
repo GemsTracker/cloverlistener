@@ -46,22 +46,22 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      * @var array
      */
     protected $_config;
-    
+
     /**
      * The time in seconds to ping the database
-     * 
+     *
      * During periods of inactivity the mysql server can close the connection
      * due to inactivity. To prevent this we can ping the connection using this
      * interval. If connection fails the application will exit with an errorlevel
      * so respawning is possible.
-     * 
-     * Set to 0 to disable sending pings to the database. Mysql default timeout 
+     *
+     * Set to 0 to disable sending pings to the database. Mysql default timeout
      * is 28800 seconds which is 8 hours so choose a reasonable time here.
-     * 
+     *
      * @var int
      */
     protected $_dbPingTime = 600;   // 10 minutes
-    
+
     /**
      *
      * @var LoopInterface
@@ -73,18 +73,18 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      * @var SocketServer
      */
     protected $_socket;
-    
+
     /**
      * To hold partial messages
-     * 
+     *
      * @var string
      */
     protected $_stack = null;
-    
+
     /**
      * Should we only listen or also process a message?
-     * 
-     * @var bool 
+     *
+     * @var bool
      */
     protected $runQueue = true;
 
@@ -117,31 +117,27 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     public function __construct(array $applicationConfig)
     {
-        $this->config = $applicationConfig;
+        $this->config  = $applicationConfig;
 
         $this->_loop   = Factory::create();
         $this->_socket = new SocketServer($this->_loop);
-        
+
         // Add a ping function to db each xx seconds to keep the connection alive
         if (!$this->_dbPingTime === 0) {
             $this->_loop->addPeriodicTimer($this->_dbPingTime, [$this, 'pingDb']);
         }
 
         parent::__construct($this->_socket);
-        
-        /*
-        if (!defined('STDIN'))
-            define('STDIN', fopen('php://stdin', 'r'));
-        if (!defined('STDOUT'))
-            define('STDOUT', fopen('php://stdout', 'w'));
-        if (!defined('STDERR'))
-            define('STDERR', fopen('php://stderr', 'w'));
-        $logging = new Stream(STDOUT, $this->_loop);
-        $ip   = $this->config['ip'];
-        $port = $this->config['port'];
-        $logging->write("Starting server on $ip:$port" . PHP_EOL);
-        $this->initLogging($logging);
-         */
+
+        if (isset($this->config['logfile'])) {
+            $logging = new Stream(fopen($this->config['logfile'], 'a'), $this->_loop);
+            $logging->write(sprintf(
+                    "Starting server on $%s:%s" . PHP_EOL,
+                    $this->config['ip'],
+                    $this->config['port']
+                    ));
+            $this->initLogging($logging);
+        }
 
         $this->on('data', [$this, 'onReceiving']);
     }
@@ -156,10 +152,10 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     {
         return $this->db instanceof AdapterInterface;
     }
-    
+
     /**
      * A message can be partial as we are reading from a buffer. Put it on a stack when it is not complete (yet)
-     * 
+     *
      * @param ConnectionInterface $connection
      */
     public function handleRequest(ConnectionInterface $connection) {
@@ -187,7 +183,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->logging = $logging;
 
         // Log connection info
-        $this->on('connection', function(ConnectionInterface $connection) use($logging) {            
+        $this->on('connection', function(ConnectionInterface $connection) use($logging) {
             $logging->write('Connection from: ' . $connection->getRemoteAddress() . PHP_EOL);
         });
 
@@ -217,13 +213,13 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     {
         return $message->getMshSegment() instanceof MSHSegment;
     }
-    
+
     public function norun()
     {
         $this->runQueue = false;
         $this->run();
     }
-    
+
     /**
      * The action when a message is saved
      *
@@ -241,7 +237,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         if (! $message) {
             echo "Invalid message send.\n";
         }
-        
+
         $saveMessage = $this->isMessageSaveable($message);
         // $saveMessage = false;
         // echo "Save msg: $saveMessage\n";
@@ -269,10 +265,10 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         unset($ack);
         unset($message);
     }
-    
+
     /**
      * Ping db to keep it alive and fail on error
-     * 
+     *
      * When there is no activity mysql will close the connection. When this is picked up on an message, it will not be picked up.
      */
     public function pingDb()
@@ -307,7 +303,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
             if (! $this->_messageTable) {
                 $this->_initMessageTable();
             }
-            
+
             $values = [
                 'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
                 'hm_type'       => $msh->getMessageType()->__toString(),
