@@ -243,7 +243,13 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         // echo "Save msg: $saveMessage\n";
 
         if ($saveMessage)  {
-            $messageId = $this->saveToDb($data, $message);
+            $encoding = $message->getMessageHeaderSegment()->getCharacterset();
+            $internal = mb_internal_encoding();
+            if ($internal != $encoding) {
+                $messageId = $this->saveToDb(mb_convert_encoding($data, $internal, $encoding), $message);
+            } else {
+                $messageId = $this->saveToDb($data, $message);
+            }
 
             // echo "Msg id: $messageId\n";
         }
