@@ -132,7 +132,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         if (isset($this->config['logfile'])) {
             $logging = new Stream(fopen($this->config['logfile'], 'a'), $this->_loop);
             $logging->write(sprintf(
-                    "Starting server on %s:%s" . PHP_EOL,
+                    "Starting server at %s on %s:%s" . PHP_EOL,
+                    date('c'),
                     $this->config['ip'],
                     $this->config['port']
                     ));
@@ -184,22 +185,30 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         // Log connection info
         $this->on('connection', function(ConnectionInterface $connection) use($logging) {
-            $logging->write('Connection from: ' . $connection->getRemoteAddress() . PHP_EOL);
+            $logging->write(sprintf(
+                    'Connection at %s from %s.' . PHP_EOL,
+                    date('c'),
+                    $connection->getRemoteAddress()));
         });
 
         // Log error info
         $this->on('error', function($errorMessage) use($logging) {
-            $logging->write('Error: ' . $errorMessage . PHP_EOL);
+            $logging->write(sprintf(
+                    'Error at %s: %s' . PHP_EOL,
+                    date('c'),
+                    $errorMessage));
         });
 
         // Log sent data
         $this->on('send', function($data) use($logging) {
-            $logging->write('Sending: ' . str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
+            $logging->write('Sending at ' . date('c') . ' data:' . PHP_EOL .
+                    str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
         });
 
         // Log received data
         $this->on('data', function($data) use($logging) {
-            $logging->write('Received: ' . str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
+            $logging->write('Received at ' . date('c') . ' data:' . PHP_EOL .
+                    str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
         });
     }
 
@@ -228,33 +237,41 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     public function onReceiving($data, ConnectionInterface $connection)
     {
-        // Do something here to make sure the encoding is correct
-        // echo mb_check_encoding($data, 'WINDOWS-1252');
-        // echo mb_check_encoding($data, 'UTF-8');
-        // echo mb_convert_encoding($data, 'UTF-8', 'WINDOWS-1252');
-        $message = $this->messageLoader->loadMessage($data);
+        try {
+            // Do something here to make sure the encoding is correct
+            // echo mb_check_encoding($data, 'WINDOWS-1252');
+            // echo mb_check_encoding($data, 'UTF-8');
+            // echo mb_convert_encoding($data, 'UTF-8', 'WINDOWS-1252');
+            $message = $this->messageLoader->loadMessage($data);
 
-        if (! $message) {
-            echo "Invalid message send.\n";
-        }
-
-        $saveMessage = $this->isMessageSaveable($message);
-        // $saveMessage = false;
-        // echo "Save msg: $saveMessage\n";
-
-        if ($saveMessage)  {
-            $encoding = $message->getMessageHeaderSegment()->getCharacterset();
-            $internal = mb_internal_encoding();
-            if ($internal != $encoding) {
-                $messageId = $this->saveToDb(mb_convert_encoding($data, $internal, $encoding), $message);
-            } else {
-                $messageId = $this->saveToDb($data, $message);
+            if (! $message) {
+                echo "Invalid message send.\n";
             }
 
-            // echo "Msg id: $messageId\n";
-        }
+            $saveMessage = $this->isMessageSaveable($message);
+            // $saveMessage = false;
+            // echo "Save msg: $saveMessage\n";
 
-        $this->sendAcknowledgement($message, $connection);
+            if ($saveMessage)  {
+                $encoding = $message->getMessageHeaderSegment()->getCharacterset();
+                $internal = mb_internal_encoding();
+                if ($internal != $encoding) {
+                    $messageId = $this->saveToDb(mb_convert_encoding($data, $internal, $encoding), $message);
+                } else {
+                    $messageId = $this->saveToDb($data, $message);
+                }
+
+                // echo "Msg id: $messageId\n";
+            }
+
+            $this->sendAcknowledgement($message, $connection);
+        } catch (\Exception $e) {
+//            $logname = 'broken.log'
+//            $file = fopen(, 'a');
+//            fwrite($file, $data);
+//            fclose($file);
+            throw $e;
+        }
 
         // Do not end the connection as it blocks later messages
         // $connection->end();

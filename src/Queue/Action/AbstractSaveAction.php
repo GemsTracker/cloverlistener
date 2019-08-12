@@ -186,6 +186,7 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
             $execute .= " $field=" . escapeshellarg($value);
         }
         if ($this->logFile) {
+            fwrite($this->logFile, 'At ' . date('c') . ' executing:' . PHP_EOL);
             fwrite($this->logFile, $execute . PHP_EOL);
         }
         // echo $execute . "\n\n";

@@ -69,7 +69,7 @@ class QueueManager implements TargetInterface
     {
         if (isset($options['logfile'])) {
             $this->_logFile = fopen($options['logfile'], 'a');
-            fwrite($this->_logFile, 'Started queue log' . PHP_EOL);
+            fwrite($this->_logFile, 'Started queue log at ' . date('c') . PHP_EOL);
         }
     }
 
