@@ -123,7 +123,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->_socket = new SocketServer($this->_loop);
 
         // Add a ping function to db each xx seconds to keep the connection alive
-        if (!$this->_dbPingTime === 0) {
+        if ($this->_dbPingTime !== 0) {
             $this->_loop->addPeriodicTimer($this->_dbPingTime, [$this, 'pingDb']);
         }
 
@@ -237,41 +237,33 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     public function onReceiving($data, ConnectionInterface $connection)
     {
-        try {
-            // Do something here to make sure the encoding is correct
-            // echo mb_check_encoding($data, 'WINDOWS-1252');
-            // echo mb_check_encoding($data, 'UTF-8');
-            // echo mb_convert_encoding($data, 'UTF-8', 'WINDOWS-1252');
-            $message = $this->messageLoader->loadMessage($data);
+        // Do something here to make sure the encoding is correct
+        // echo mb_check_encoding($data, 'WINDOWS-1252');
+        // echo mb_check_encoding($data, 'UTF-8');
+        // echo mb_convert_encoding($data, 'UTF-8', 'WINDOWS-1252');
+        $message = $this->messageLoader->loadMessage($data);
 
-            if (! $message) {
-                echo "Invalid message send.\n";
-            }
-
-            $saveMessage = $this->isMessageSaveable($message);
-            // $saveMessage = false;
-            // echo "Save msg: $saveMessage\n";
-
-            if ($saveMessage)  {
-                $encoding = $message->getMessageHeaderSegment()->getCharacterset();
-                $internal = mb_internal_encoding();
-                if ($internal != $encoding) {
-                    $messageId = $this->saveToDb(mb_convert_encoding($data, $internal, $encoding), $message);
-                } else {
-                    $messageId = $this->saveToDb($data, $message);
-                }
-
-                // echo "Msg id: $messageId\n";
-            }
-
-            $this->sendAcknowledgement($message, $connection);
-        } catch (\Exception $e) {
-//            $logname = 'broken.log'
-//            $file = fopen(, 'a');
-//            fwrite($file, $data);
-//            fclose($file);
-            throw $e;
+        if (! $message) {
+            echo "Invalid message send.\n";
         }
+
+        $saveMessage = $this->isMessageSaveable($message);
+        // $saveMessage = false;
+        // echo "Save msg: $saveMessage\n";
+
+        if ($saveMessage)  {
+            $encoding = $message->getMessageHeaderSegment()->getCharacterset();
+            $internal = mb_internal_encoding();
+            if ($internal != $encoding) {
+                $messageId = $this->saveToDb(mb_convert_encoding($data, $internal, $encoding), $message);
+            } else {
+                $messageId = $this->saveToDb($data, $message);
+            }
+
+            // echo "Msg id: $messageId\n";
+        }
+
+        $this->sendAcknowledgement($message, $connection);
 
         // Do not end the connection as it blocks later messages
         // $connection->end();
@@ -297,6 +289,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     public function pingDb()
     {
         if (@$this->db->getDriver()->getConnection()->getResource()->ping() === false) {
+            error_log('database was disconnected at ' . date('c'));
             exit(255);
         }
     }
@@ -326,6 +319,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
             if (! $this->_messageTable) {
                 $this->_initMessageTable();
             }
+
+            $this->_messageTable->setNoDb();
 
             $values = [
                 'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
