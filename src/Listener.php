@@ -320,8 +320,6 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                 $this->_initMessageTable();
             }
 
-            $this->_messageTable->setNoDb();
-
             $values = [
                 'hm_datetime'   => $msh->getDateTimeOfMessage()->getObject()->format('Y-m-d H:i:s'),
                 'hm_type'       => $msh->getMessageType()->__toString(),
