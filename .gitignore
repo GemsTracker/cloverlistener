@@ -1,3 +1,5 @@
+
+/.idea/
 /composer.lock
 /config/db.inc.php
 /vendor/

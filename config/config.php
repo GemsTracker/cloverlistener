@@ -10,6 +10,9 @@ return [
         'logfile'  => defined('LOG_LISTENER') ? LOG_DIR . '/' . LOG_LISTENER : null,
         ],
     /*  Database connector */
+    'cleanup'       => [
+        'logfile'  => defined('LOG_CLEANUP') ? LOG_DIR . '/' . LOG_CLEANUP : null,
+    ],
     'database'    => [
         'driver'   => 'Mysqli',
         'database' => DATABASE,

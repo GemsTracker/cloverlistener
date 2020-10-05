@@ -46,14 +46,18 @@ $loader->createServiceManager([
 
 try {
     $args = new Getopt([
-        'help|h'    => 'Display this help',
-        'install|i' => 'Install the application',
-        'listen|l'  => 'Listen to HL7 queue - DEFAULT action',
-        'queue|q=s' => 'Queue commands: all, rebuild, rerun',
-        ]);
+                           'clean|c=i' => 'Clean old messages and queue: days to keep data, e.g. 14',
+                           'help|h'    => 'Display this help',
+                           'install|i' => 'Install the application',
+                           'listen|l'  => 'Listen to HL7 queue - DEFAULT action',
+                           'queue|q=s' => 'Queue commands: all, rebuild, rerun',
+                       ]);
     $args->parse();
 
-    if ($args->getOption('queue')) {
+    if ($args->getOption('clean')) {
+        $options = isset($config['cleanup']) ? $config['cleanup'] : null;
+        $application = $loader->create('Clover\\Cleaner', $args->getOption('clean'), $options);
+    } elseif ($args->getOption('queue')) {
         $application = $loader->create('Clover\\QueueProcessor', $args->getOption('queue'));
     } elseif ($args->getOption('install')) {
         $application = $loader->create('Clover\\Installer');

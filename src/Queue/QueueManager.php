@@ -11,6 +11,7 @@
 
 namespace Gems\Clover\Queue;
 
+use Gems\Clover\QueueTableTrait;
 use Gems\HL7\Node\Message;
 
 use Zalt\Db\Sql\Literal\CurrentTimestampLiteral;
@@ -29,6 +30,7 @@ use Zend\Db\Sql\Literal;
  */
 class QueueManager implements TargetInterface
 {
+    use QueueTableTrait;
     use TargetTrait;
 
     /**
@@ -44,26 +46,10 @@ class QueueManager implements TargetInterface
     protected $_logFile;
 
     /**
-     * @var \Zalt\Db\TableGateway\TableGateway The message table
-     */
-    protected $_queueTable ;
-
-    /**
-     *
-     * @var \Zalt\Db\DbBridge
-     */
-    protected $db;
-
-    /**
      *
      * @var \Zalt\Loader\ProjectOverloader
      */
     protected $loader;
-
-    /**
-     * @var string The name of the queue table
-     */
-    protected $queueTableName = 'hl7_queue';
 
     public function __construct($options = [])
     {
@@ -93,14 +79,6 @@ class QueueManager implements TargetInterface
         }
 
         unset($subLoader);
-    }
-
-    /**
-     * Helper function to set the queue table gateway
-     */
-    protected function _initQueueTable()
-    {
-        $this->_queueTable = $this->db->createTableGateway($this->queueTableName);
     }
 
     /**
