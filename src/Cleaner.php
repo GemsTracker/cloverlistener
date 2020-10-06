@@ -69,7 +69,7 @@ class Cleaner implements ApplicationInterface, TargetInterface
         if (isset($config['logfile'])) {
             $this->logging = fopen($config['logfile'], 'a');
             fwrite($this->logging, sprintf(
-                "Starting cleanup run at %s for &d days." . PHP_EOL,
+                "Starting cleanup run at %s for %d days." . PHP_EOL,
                 date('c'),
                 $this->_days
                 ));
@@ -113,35 +113,55 @@ class Cleaner implements ApplicationInterface, TargetInterface
         $queueWhere = sprintf(
             "hq_created < '%s' AND hq_execution_count > 0", 
             $startDate->format('Y-m-d H:i:s'));
-        $messsageWhere = sprintf(
+        $messageWhere = sprintf(
             "hm_created < '%s' AND hm_id NOT IN (SELECT hq_message_id FROM hl7_queue)", 
             $startDate->format('Y-m-d H:i:s'));
 
         try {
             $queueDel = $this->_queueTable->delete($queueWhere);
-            $messageDel = $this->_messageTable->delete($messsageWhere);
-
+        } catch (\Exception $e) {
             $message = sprintf(
-                "Cleanup log %d queue items and %d message items created before %s deleted." . PHP_EOL,
-                $queueDel,
-                $messageDel,
-                $startDate->format('Y-m-d H:i:s')
-            );
+                "Cleanup error at %s on queue %s: %s" . PHP_EOL . $e->getTraceAsString() . PHP_EOL,
+                date('c'),
+                $queueWhere,
+                $e->getMessage());
+
             if ($this->logging) {
                 fwrite($this->logging, $message);
             }
+            echo $message;
             
-            // echo $message;
+            return 1;
+        }
+            
+        try {
+            $messageDel = $this->_messageTable->delete($messageWhere);
+
         } catch (\Exception $e) {
             $message = sprintf(
-                "Cleanup error at %s: %s" . PHP_EOL . $e->getTraceAsString() . PHP_EOL,
+                "Cleanup error at %s on messages %s: %s" . PHP_EOL . $e->getTraceAsString() . PHP_EOL,
                 date('c'),
+                $messageWhere,
                 $e->getMessage());
             
             if ($this->logging) {
                 fwrite($this->logging, $message);
             }
             echo $message;
+            
+            return 1;
         }
+        
+        $message = sprintf(
+            "Cleanup log %d queue items and %d message items created before %s deleted." . PHP_EOL,
+            $queueDel,
+            $messageDel,
+            $startDate->format('Y-m-d H:i:s')
+        );
+        if ($this->logging) {
+            fwrite($this->logging, $message);
+        }
+
+        // echo $message;
     }
 }
