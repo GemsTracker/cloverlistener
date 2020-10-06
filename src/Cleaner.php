@@ -67,12 +67,12 @@ class Cleaner implements ApplicationInterface, TargetInterface
         }
         
         if (isset($config['logfile'])) {
-            $this->logging = new Stream(fopen($config['logfile'], 'a'), $this->_loop);
-            $this->logging->write(sprintf(
-                                "Starting cleanup run at %s for &d days." . PHP_EOL,
-                                date('c'),
-                                $this->_days
-                            ));
+            $this->logging = fopen($config['logfile'], 'a');
+            fwrite($this->logging, sprintf(
+                "Starting cleanup run at %s for &d days." . PHP_EOL,
+                date('c'),
+                $this->_days
+                ));
         }
     }
 
@@ -128,10 +128,10 @@ class Cleaner implements ApplicationInterface, TargetInterface
                 $startDate->format('Y-m-d H:i:s')
             );
             if ($this->logging) {
-                $this->logging->write($message);
+                fwrite($this->logging, $message);
             }
             
-            echo $message;
+            // echo $message;
         } catch (\Exception $e) {
             $message = sprintf(
                 "Cleanup error at %s: %s" . PHP_EOL . $e->getTraceAsString() . PHP_EOL,
@@ -139,7 +139,7 @@ class Cleaner implements ApplicationInterface, TargetInterface
                 $e->getMessage());
             
             if ($this->logging) {
-                $this->logging->write($message);
+                fwrite($this->logging, $message);
             }
             echo $message;
         }
