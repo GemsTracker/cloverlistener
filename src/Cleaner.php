@@ -51,7 +51,7 @@ class Cleaner implements ApplicationInterface, TargetInterface
      *
      * @param null $days
      */
-    public function __construct($days = null)
+    public function __construct($days = null, array $config)
     {
         if (intval($days) > 0) {
             $this->_days = intval($days);
@@ -66,9 +66,9 @@ class Cleaner implements ApplicationInterface, TargetInterface
             }
         }
         
-        if (isset($this->config['logfile'])) {
-            $logging = new Stream(fopen($this->config['logfile'], 'a'), $this->_loop);
-            $logging->write(sprintf(
+        if (isset($config['logfile'])) {
+            $this->logging = new Stream(fopen($config['logfile'], 'a'), $this->_loop);
+            $this->logging->write(sprintf(
                                 "Starting cleanup run at %s for &d days." . PHP_EOL,
                                 date('c'),
                                 $this->_days
