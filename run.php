@@ -49,7 +49,7 @@ try {
                            'clean|c=i' => 'Clean old messages and queue: days to keep data, e.g. 14',
                            'help|h'    => 'Display this help',
                            'install|i' => 'Install the application',
-                           'listen|l'  => 'Listen to HL7 queue - DEFAULT action',
+                           'listen|l-i'  => 'Listen to HL7 queue - DEFAULT action. i=port, overrules config.',
                            'queue|q=s' => 'Queue commands: all, rebuild, rerun',
                        ]);
     $args->parse();
@@ -65,6 +65,13 @@ try {
         echo $args->getUsageMessage(). "\n";
         exit(0);
     } else {
+        $port = $args->getOption('listen');
+        if ($port > 1) {
+            $config['application']['port'] = $port;
+        } elseif (! isset($config['application']['port'])) {
+            echo "No port defined!\nSpecify a port number using -l port, or specify in config.php under application!\n";
+            exit(1);
+        }
         $application = $loader->create('Clover\\Listener', $config['application']);
     }
     $application->run();
