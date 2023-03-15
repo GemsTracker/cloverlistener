@@ -129,7 +129,11 @@ class QueueManager implements TargetInterface
 
                 $this->_queueTable->update($posVals, $where);
 
-                if ($result->succes) return 1;
+                if ($result->succes) {
+                    return 1;
+                } elseif ($result->message) {
+                    fwrite($this->_logFile, $result->message . ' ' . date('c') . PHP_EOL);
+                }
             }
         }
 

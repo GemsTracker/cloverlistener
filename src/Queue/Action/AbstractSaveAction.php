@@ -134,7 +134,8 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
                 }
             } else {
                 $result->setSucces(false);
-                $result->setMessage("Missing key data");
+                $msg = $this->_extractor->getErrorMessage();
+                $result->setMessage($msg ? $msg : "Missing key data.");
             }
         }
     }
