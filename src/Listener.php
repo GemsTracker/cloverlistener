@@ -124,7 +124,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         // Add a ping function to db each xx seconds to keep the connection alive
         if ($this->_dbPingTime !== 0) {
-            $this->_loop->addPeriodicTimer($this->_dbPingTime, [$this, 'pingDb']);
+            $this->_loop->addPeriodicTimer($this->_dbPingTime, [$this, 'checkDb']);
         }
 
         parent::__construct($this->_socket);
@@ -144,6 +144,18 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     }
 
     /**
+     * @return void Check the db abd reestablish the connection if broken'
+     */
+    public function checkDb()
+    {
+        $connection = $this->db->getDriver()->getConnection();
+        if ($connection instanceof \Laminas\Db\Adapter\Driver\ConnectionInterface && ! $connection->isConnected()) {
+            error_log('reconnecting');
+            $connection->connect();
+        }
+    }
+
+    /**
      * Should be called after answering the request to allow the Target
      * to check if all required registry values have been set correctly.
      *
@@ -160,6 +172,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      * @param ConnectionInterface $connection
      */
     public function handleRequest(ConnectionInterface $connection) {
+        $this->checkDb();
+
         $this->emit('connection', array($connection));
         $connection->on('data', function($data) use ($connection) {
             try {
@@ -279,19 +293,6 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         unset($ack);
         unset($message);
-    }
-
-    /**
-     * Ping db to keep it alive and fail on error
-     *
-     * When there is no activity mysql will close the connection. When this is picked up on an message, it will not be picked up.
-     */
-    public function pingDb()
-    {
-        if (@$this->db->getDriver()->getConnection()->getResource()->ping() === false) {
-            error_log('database was disconnected at ' . date('c'));
-            exit(255);
-        }
     }
 
     /**
