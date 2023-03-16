@@ -190,8 +190,7 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
             fwrite($this->logFile, 'At ' . date('c') . ' executing:' . PHP_EOL);
             fwrite($this->logFile, $execute . PHP_EOL);
         }
-        // echo $execute . "\n\n";
-        // return;
+//        echo $execute . "\n\n";
 
         $output = [];
         $status = 0;
@@ -203,6 +202,6 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
         if ($this->logFile) {
             fwrite($this->logFile, $result->message . PHP_EOL . PHP_EOL);
         }
-        echo $result->message . "\n";
+        // echo $result->message . "\n";
     }
 }
