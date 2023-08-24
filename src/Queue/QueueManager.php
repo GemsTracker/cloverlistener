@@ -12,6 +12,7 @@
 namespace Gems\Clover\Queue;
 
 use Gems\Clover\QueueTableTrait;
+use Gems\Clover\Queue\Action\AbstractSaveAction;
 use Gems\HL7\Node\Message;
 
 use Zalt\Db\Sql\Literal\CurrentTimestampLiteral;
@@ -138,6 +139,19 @@ class QueueManager implements TargetInterface
         }
 
         return 0;
+    }
+
+    public function getSetup()
+    {
+        $output = [];
+        foreach ($this->_actionClasses as $name => $object) {
+            $output[$name] = get_class($object);
+            if ($object instanceof AbstractSaveAction) {
+                $output[$name . '->extractor'] = $object->getExtractorClass();
+            }
+        }
+
+        return $output;
     }
 
     /**

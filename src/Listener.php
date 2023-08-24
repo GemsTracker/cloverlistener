@@ -166,6 +166,14 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         return $this->db instanceof AdapterInterface;
     }
 
+    public function getSetup()
+    {
+        $output = [];
+        $output['Message segment classes'] = $this->messageLoader->getSegmentInfo();
+        $output['Queue manager'] = $this->queueManager->getSetup();
+        return $output;
+    }
+
     /**
      * A message can be partial as we are reading from a buffer. Put it on a stack when it is not complete (yet)
      *

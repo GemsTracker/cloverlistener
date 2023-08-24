@@ -95,6 +95,11 @@ abstract class AbstractSaveAction implements QueueActionInterface, TargetInterfa
      */
     abstract protected function getExtractor();
 
+    public function getExtractorClass()
+    {
+        return get_class($this->getExtractor());
+    }
+
     public function deferredProcess(array $data, ActionResult $result, $firstLast)
     {
         $file = $this->getFileHandle($firstLast);

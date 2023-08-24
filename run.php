@@ -46,11 +46,12 @@ $loader->createServiceManager([
 
 try {
     $args = new Getopt([
-                           'clean|c=i' => 'Clean old messages and queue: days to keep data, e.g. 14',
-                           'help|h'    => 'Display this help',
-                           'install|i' => 'Install the application',
-                           'listen|l-i'  => 'Listen to HL7 queue - DEFAULT action. i=port, overrules config.',
-                           'queue|q=s' => 'Queue commands: all, rebuild, rerun',
+                           'clean|c=i'  => 'Clean old messages and queue: days to keep data, e.g. 14.',
+                           'help|h'     => 'Display this help.',
+                           'install|i'  => 'Install the application',
+                           'listen|l-i' => 'Listen to HL7 queue - DEFAULT action. i=port, overrules config.',
+                           'queue|q=s'  => 'Queue commands: all, rebuild, rerun.',
+                           'show|s'     => 'Show the setup.',
                        ]);
     $args->parse();
 
@@ -63,6 +64,13 @@ try {
         $application = $loader->create('Clover\\Installer');
     } elseif ($args->getOption('help')) {
         echo $args->getUsageMessage(). "\n";
+        exit(0);
+    } elseif ($args->getOption('show')) {
+        print_config("Configuration", $config);
+        $application = $loader->create('Clover\\Listener', $config['application']);
+        print_config("Application", $application->getSetup());
+
+        // $application
         exit(0);
     } else {
         $port = $args->getOption('listen');
@@ -80,4 +88,16 @@ try {
 } catch (Zend\Console\Exception\RuntimeException $e) {
     echo $e->getUsageMessage(). "\n";
     exit(1);
+}
+
+function print_config($title, array $values, $level = 1)
+{
+    echo str_repeat("\t", $level - 1) . "$title:\n";
+    foreach ($values as $key => $value) {
+        if (is_array($value)) {
+            print_config($key, $value, $level + 1);
+        } else {
+            echo str_repeat("\t", $level) . "$key = $value\n";
+        }
+    }
 }

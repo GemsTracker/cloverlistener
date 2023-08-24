@@ -82,6 +82,15 @@ class MessageLoader implements TargetInterface
         $this->_initUnserializer();
     }
 
+    public function getSegmentInfo()
+    {
+        $output = [];
+        foreach ($this->_segmentClassMap as $key => $class) {
+            $output[$key] = $class;
+        }
+        return $output;
+    }
+
     /**
      *
      * @param string $hl7String A HL7 Payload
@@ -92,5 +101,4 @@ class MessageLoader implements TargetInterface
     {
         return $this->_unserializer->loadMessageFromString($hl7String, $this->_segmentClassMap, $checkEncoding);
     }
-
 }
