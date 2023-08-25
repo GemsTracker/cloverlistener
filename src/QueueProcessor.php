@@ -111,31 +111,34 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         $selectString = $sql->buildSqlString($select);
         $result = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);
 
+        $selectString = $sql->buildSqlString($select);
+        $statement = $this->db->getAdapter()->createStatement($selectString);
+        $result = $statement->execute();
+
         if (! ($result instanceof ResultSet) || $result->count() == 0) {
             return;
         }
 
-        $last = $result->count();
+//        $last = $result->count();
 
         $executed = 0;
         $success  = 0;
 
         $check = false; // Message comes from DB and encoding was checked before
         $firstLast = 'first';
-        foreach ($result as $queueRow) {
-            $executed++;
-            // echo $queueRow['hq_queue_id'] . "\n";
-            $message = $this->messageLoader->loadMessage($queueRow['hm_message'], $check);
+        if ($result instanceof ResultInterface && $result->isQueryResult()) {
+            $resultSet = new ResultSet;
+            $resultSet->initialize($result);
 
-            if ($executed == $last && $deferred === true) {
-                $firstLast .= 'last';
+            foreach ($resultSet as $row) {
+                $executed++;
+                // echo $queueRow['hq_queue_id'] . "\n";
+                $message = $this->messageLoader->loadMessage($row->hm_message, $check);
+
+                $result  = $this->queueManager->executeQueueItem($row->hq_queue_id, $message, $deferred, $firstLast);
+
+                $firstLast = null;
             }
-
-            $result  = $this->queueManager->executeQueueItem($queueRow['hq_queue_id'], $message, $deferred, $firstLast);
-
-            $firstLast = null;
-
-            $success = $success + $result;
         }
 
         echo sprintf("%d commands executed, %d successful, %d failed.\n",
@@ -198,7 +201,6 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         }
 
         $selectString = $sql->buildSqlString($select);
-//        $messages = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);     // Don't use prepared statement
         $statement = $this->db->getAdapter()->createStatement($selectString);
         $result = $statement->execute();
 
@@ -213,13 +215,6 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
                 );
             }
         }
-//        foreach ($messages as $messageRow) {
-//            // echo $messageRow['hm_id'] . "\n";
-//            $this->queueManager->processMessage(
-//                    $messageRow['hm_id'],
-//                    $this->messageLoader->loadMessage($messageRow['hm_message'], $check)
-//                    );
-//        }
     }
 
     /**
