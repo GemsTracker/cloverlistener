@@ -29,7 +29,7 @@ trait QueueTableTrait
      *
      * @var \Zalt\Db\DbBridge
      */
-    protected $db;
+    protected $db2;
 
     /**
      * @var string The name of the queue table
@@ -41,6 +41,6 @@ trait QueueTableTrait
      */
     protected function _initQueueTable()
     {
-        $this->_queueTable = $this->db->createTableGateway($this->queueTableName);
+        $this->_queueTable = $this->db2->createTableGateway($this->queueTableName);
     }
 }

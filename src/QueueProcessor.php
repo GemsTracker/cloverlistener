@@ -198,15 +198,28 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
         }
 
         $selectString = $sql->buildSqlString($select);
-        $messages = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);     // Don't use prepared statement
+//        $messages = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);     // Don't use prepared statement
+        $statement = $this->db->getAdapter()->createStatement($selectString);
+        $result = $statement->execute();
 
-        foreach ($messages as $messageRow) {
-            // echo $messageRow['hm_id'] . "\n";
-            $this->queueManager->processMessage(
-                    $messageRow['hm_id'],
-                    $this->messageLoader->loadMessage($messageRow['hm_message'], $check)
-                    );
+        if ($result instanceof ResultInterface && $result->isQueryResult()) {
+            $resultSet = new ResultSet;
+            $resultSet->initialize($result);
+
+            foreach ($resultSet as $row) {
+                $this->queueManager->processMessage(
+                    $row->hm_id,
+                    $this->messageLoader->loadMessage($row->hm_message, $check)
+                );
+            }
         }
+//        foreach ($messages as $messageRow) {
+//            // echo $messageRow['hm_id'] . "\n";
+//            $this->queueManager->processMessage(
+//                    $messageRow['hm_id'],
+//                    $this->messageLoader->loadMessage($messageRow['hm_message'], $check)
+//                    );
+//        }
     }
 
     /**

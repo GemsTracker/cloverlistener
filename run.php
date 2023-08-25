@@ -40,6 +40,7 @@ $loader = new ProjectOverloader([
 
 $loader->createServiceManager([
         'db'            => DbFactory::creatorForServiceManager($config['database']),
+        'db2'           => DbFactory::creatorForServiceManager($config['database']), // Second connection for queue
         'messageLoader' => 'Message\\MessageLoader',
         'queueManager'  => ['Queue\\QueueManager', $queueOptions],
 ]);
