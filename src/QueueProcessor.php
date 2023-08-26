@@ -109,7 +109,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
     protected function queryExecute($select, $deferred = false)
     {
         $id = 0;
-        $select->limit(1000);
+        $select->limit(25);
         $sql = new Sql($this->db);
 
         $check     = false; // Message comes from DB and encoding was checked before
