@@ -14,6 +14,7 @@ namespace Gems\Clover;
 use Exception;
 use Gems\Clover\Message\MessageLoader;
 use Gems\Clover\Queue\QueueManager;
+use Laminas\Db\Adapter\ParameterContainer;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Adapter\Adapter;
@@ -107,37 +108,40 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
      */
     protected function queryExecute($select, $deferred = false)
     {
+        $id = 0;
+        $select->limit(1000);
         $sql = new Sql($this->db);
-        $selectString = $sql->buildSqlString($select);
-        $result = $this->db->getAdapter()->query($selectString, Adapter::QUERY_MODE_EXECUTE);
 
-        $selectString = $sql->buildSqlString($select);
-        $statement = $this->db->getAdapter()->createStatement($selectString);
-        $result = $statement->execute();
-
-        if (! ($result instanceof ResultSet) || $result->count() == 0) {
-            return;
-        }
-
-//        $last = $result->count();
-
-        $executed = 0;
-        $success  = 0;
-
-        $check = false; // Message comes from DB and encoding was checked before
+        $check     = false; // Message comes from DB and encoding was checked before
+        $executed  = 0;
         $firstLast = 'first';
-        if ($result instanceof ResultInterface && $result->isQueryResult()) {
-            $resultSet = new ResultSet;
-            $resultSet->initialize($result);
+        $success   = 0;
 
-            foreach ($resultSet as $row) {
-                $executed++;
-                // echo $queueRow['hq_queue_id'] . "\n";
-                $message = $this->messageLoader->loadMessage($row->hm_message, $check);
+        while (true) {
+            $select2 = clone $select;
+            $select2->where(['hl7_queue.hq_queue_id > ?' => $id]);
+            $selectString = $sql->buildSqlString($select2);
+//            echo $selectString . "\n";
+            $statement = $this->db->getAdapter()->query($selectString);
+            $result = $statement->execute();
+            if ($result instanceof ResultInterface) {
+                $stop = true;
+                foreach ($result as $row) {
+                    $executed++;
+                    $stop = false;
+                    $id   = $row['hq_queue_id'];
+//                    echo $id . "\n";
+                    $message = $this->messageLoader->loadMessage($row['hm_message'], $check);
+                    $success += $this->queueManager->executeQueueItem($row['hq_queue_id'], $message, $deferred, $firstLast);
 
-                $result  = $this->queueManager->executeQueueItem($row->hq_queue_id, $message, $deferred, $firstLast);
+                    $firstLast = null;
+                }
 
-                $firstLast = null;
+                if ($stop) {
+                    break;
+                }
+            } else {
+                break;
             }
         }
 
