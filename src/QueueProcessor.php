@@ -14,7 +14,6 @@ namespace Gems\Clover;
 use Exception;
 use Gems\Clover\Message\MessageLoader;
 use Gems\Clover\Queue\QueueManager;
-use Laminas\Db\Adapter\ParameterContainer;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
 use Zend\Db\Adapter\Adapter;
@@ -228,7 +227,7 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
     public function rerun($route = null)
     {
         $sql = $this->getQueueSelect();
-        if ($route instanceof Route && $route->getMatchedParam('failed', false)) {
+        if ((is_string($route) && 'failed' == $route) || ($route instanceof Route && $route->getMatchedParam('failed', false))) {
             echo "Rerun failed commands\n";
 
             $sql->where('hq_execution_attempts > 0')
@@ -261,6 +260,10 @@ class QueueProcessor implements ApplicationInterface, TargetInterface
 
                 case 'rerun':
                     $this->rerun();
+                    break;
+
+                case 'failed':
+                    $this->rerun('failed');
                     break;
 
                 default:

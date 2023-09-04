@@ -51,7 +51,7 @@ try {
                            'help|h'     => 'Display this help.',
                            'install|i'  => 'Install the application',
                            'listen|l-i' => 'Listen to HL7 queue - DEFAULT action. i=port, overrules config.',
-                           'queue|q=s'  => 'Queue commands: all, rebuild, rerun.',
+                           'queue|q=s'  => 'Queue commands: all, rebuild, rerun, failed.',
                            'show|s'     => 'Show the setup.',
                        ]);
     $args->parse();
