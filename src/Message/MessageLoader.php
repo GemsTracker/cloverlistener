@@ -51,14 +51,16 @@ class MessageLoader implements TargetInterface
     protected function _initSegmentClassMap()
     {
         $this->_segmentClassMap = [
-            'MSH' => $this->loader->find('HL7\\Segment\\MSHSegment'),
-            'MSA' => $this->loader->find('HL7\\Segment\\MSASegment'),
+            'AIL' => $this->loader->find('HL7\\Segment\\AILSegment'),
             'EVN' => $this->loader->find('HL7\\Segment\\EVNSegment'),
+            'MSA' => $this->loader->find('HL7\\Segment\\MSASegment'),
+            'MRG' => $this->loader->find('HL7\\Segment\\MRGSegment'),
+            'MSH' => $this->loader->find('HL7\\Segment\\MSHSegment'),
+            'NTE' => $this->loader->find('HL7\\Segment\\NTESegment'),
             'PID' => $this->loader->find('HL7\\Segment\\PIDSegment'),
             'PV1' => $this->loader->find('HL7\\Segment\\PV1Segment'),
             'SCH' => $this->loader->find('HL7\\Segment\\SCHSegment'),
-            'MRG' => $this->loader->find('HL7\\Segment\\MRGSegment'),
-            'NTE' => $this->loader->find('HL7\\Segment\\NTESegment'),
+            'ZDB' => $this->loader->find('HL7\\Segment\\ZDBSegment'),
             ];
     }
 
