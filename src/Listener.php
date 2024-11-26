@@ -14,17 +14,16 @@ use Gems\Clover\Message\MessageLoader;
 use Gems\Clover\Queue\QueueManager;
 use Gems\HL7\Node\Message;
 use Gems\HL7\Segment\MSHSegment;
+use Laminas\Db\Adapter\AdapterInterface;
 use PharmaIntelligence\MLLP\Server;
 use PharmaIntelligence\MLLP\MLLPParser;
 use React\EventLoop\Factory;
 use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
 use React\Socket\Server as SocketServer;
-use React\Stream\Stream;
 use Zalt\Loader\ProjectOverloader;
 use Zalt\Loader\Target\TargetInterface;
 use Zalt\Loader\Target\TargetTrait;
-use Zend\Db\Adapter\AdapterInterface;
 
 /**
  *
@@ -62,6 +61,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     protected $_dbPingTime = 600;   // 10 minutes
 
+    protected $_fHandle;
+
     /**
      *
      * @var LoopInterface
@@ -80,6 +81,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      * @var string
      */
     protected $_stack = null;
+
+    protected $_verbose = false;
 
     /**
      * Should we only listen or also process a message?
@@ -101,11 +104,6 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $messageLoader;
 
     /**
-     * @var Stream
-     */
-    protected $logging = null;
-
-    /**
      *
      * @var QueueManager
      */
@@ -115,12 +113,13 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      *
      * @param array $applicationConfig Application part of the config file
      */
-    public function __construct(array $applicationConfig)
+    public function __construct(array $applicationConfig, $verbose = false)
     {
-        $this->config  = $applicationConfig;
+        $this->config   = $applicationConfig;
 
-        $this->_loop   = Factory::create();
-        $this->_socket = new SocketServer($this->_loop);
+        $this->_loop    = Factory::create();
+        $this->_socket  = new SocketServer($this->_loop);
+        $this->_verbose = $verbose;
 
         // Add a ping function to db each xx seconds to keep the connection alive
         if ($this->_dbPingTime !== 0) {
@@ -130,17 +129,18 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         parent::__construct($this->_socket);
 
         if (isset($this->config['logfile'])) {
-            $logging = new Stream(fopen($this->config['logfile'], 'a'), $this->_loop);
-            $logging->write(sprintf(
-                    "Starting server at %s on %s:%s" . PHP_EOL,
-                    date('c'),
-                    $this->config['ip'],
-                    $this->config['port']
-                    ));
-            $this->initLogging($logging);
+            $this->_fHandle = fopen($this->config['logfile'], 'a+');
         }
+        $this->log(sprintf(
+            "Starting server at %s on %s:%s" . PHP_EOL,
+            date('c'),
+            $this->config['ip'],
+            $this->config['port']
+        ));
+        $this->initLogging();
 
         $this->on('data', [$this, 'onReceiving']);
+        $this->on('error', [$this, 'onError']);
     }
 
     /**
@@ -201,36 +201,36 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         });
     }
 
-    public function initLogging(Stream $logging)
+    public function initLogging()
     {
-        $this->logging = $logging;
+        $self = $this;
 
         // Log connection info
-        $this->on('connection', function(ConnectionInterface $connection) use($logging) {
-            $logging->write(sprintf(
-                    'Connection at %s from %s.' . PHP_EOL,
-                    date('c'),
-                    $connection->getRemoteAddress()));
+        $this->on('connection', function(ConnectionInterface $connection) use ($self) {
+            $self->log(sprintf(
+                'Connection at %s from %s.' . PHP_EOL,
+                date('c'),
+                $connection->getRemoteAddress()));
         });
 
         // Log error info
-        $this->on('error', function($errorMessage) use($logging) {
-            $logging->write(sprintf(
-                    'Error at %s: %s' . PHP_EOL,
-                    date('c'),
-                    $errorMessage));
+        $this->on('error', function($errorMessage, ConnectionInterface $connection) use ($self) {
+            $self->log(sprintf(
+                'Error from ' . $connection->getRemoteAddress() . ' at %s: %s' . PHP_EOL,
+                date('c'),
+                $errorMessage));
         });
 
         // Log sent data
-        $this->on('send', function($data) use($logging) {
-            $logging->write('Sending at ' . date('c') . ' data:' . PHP_EOL .
-                    str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
+        $this->on('send', function($data, ConnectionInterface $connection) use ($self) {
+            $self->log('Sending to ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' data:' . PHP_EOL .
+                str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
         });
 
         // Log received data
-        $this->on('data', function($data) use($logging) {
-            $logging->write('Received at ' . date('c') . ' data:' . PHP_EOL .
-                    str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
+        $this->on('data', function($data, ConnectionInterface $connection) use ($self) {
+            $self->log('Received from ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' data:' . PHP_EOL .
+                str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
         });
     }
 
@@ -251,10 +251,34 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->run();
     }
 
+    public function log($message)
+    {
+        if ($this->_verbose) {
+            echo $message;
+        }
+        if (is_resource($this->_fHandle)) {
+            fwrite($this->_fHandle, $message);
+        }
+    }
+
     /**
      * The action when a message is saved
      *
-     * @param type $data
+     * @param mixed $errorMessage
+     * @param ConnectionInterface $connection
+     */
+    public function onError($errorMessage, ConnectionInterface $connection)
+    {
+        echo sprintf(
+            'Error from ' . $connection->getRemoteAddress() . ' at %s: %s' . PHP_EOL,
+            date('c'),
+            $errorMessage);
+    }
+
+    /**
+     * The action when a message is saved
+     *
+     * @param mixed $data
      * @param ConnectionInterface $connection
      */
     public function onReceiving($data, ConnectionInterface $connection)
@@ -340,12 +364,35 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                 'hm_message'    => $data,
                 ];
 
+            error_log(print_r($values, true));
+
             if ($this->_messageTable->insert($values)) {
                 return $this->_messageTable->getLastInsertValue();
             }
         }
 
         return false;
+    }
+
+    /**
+     * Adds connection to send event
+     *
+     * @param $data
+     * @param ConnectionInterface $connection
+     * @return void
+     */
+    public function send($data, ConnectionInterface $connection)
+    {
+        $this->emit('send', array($data, $connection));
+
+        $connection->on('error', function(ConnectionInterface $connection, $error) {
+            $this->emit('error', array('Error sending data: '.$error));
+        });
+
+        $data = MLLPParser::enclose($data);
+        $connection->write($data);
+        $connection->removeAllListeners('error');
+
     }
 
     /**
