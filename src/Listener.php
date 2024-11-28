@@ -185,7 +185,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->emit('connection', array($connection));
         $connection->on('data', function($data) use ($connection) {
             try {
-                $this->log(strlen($data) . ' bytes data received' . PHP_EOL);
+                $this->log(PHP_EOL . PHP_EOL . strlen($data) . ' bytes data received' . PHP_EOL);
                 if (!is_null($this->_stack)) {
                     $data = $this->_stack . $data;
                     $this->_stack = null;
@@ -198,7 +198,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                 $this->_stack = $data;
                 // Do not stop yet
                 //$this->handleInvalidMLLPEnvelope($data, $connection);
-                $this->emit('error', array('Invalid MLLP envelope. Received: "'.$data.'"' . $e->getMessage(), $connection));
+                $this->emit('error', array('Invalid MLLP envelope. Received: [[[["'.$data.'"]]]]' . PHP_EOL . $e->getMessage() . PHP_EOL, $connection));
             }
         });
     }
