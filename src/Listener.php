@@ -217,7 +217,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         // Log error info
         $this->on('error', function($errorMessage, ConnectionInterface $connection) use ($self) {
             $self->log(sprintf(
-                'Error from ' . $connection->getRemoteAddress() . ' at %s: %s' . PHP_EOL,
+                'Error from ' . $connection->getRemoteAddress() . ' at %s: [[%s]]   ' . PHP_EOL,
                 date('c'),
                 $errorMessage));
         });
@@ -230,8 +230,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         // Log received data
         $this->on('data', function($data, ConnectionInterface $connection) use ($self) {
-            $self->log('Received from ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' data:' . PHP_EOL .
-                str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
+            $self->log('Received from ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data:[[[' . PHP_EOL .
+                str_replace(chr(13), PHP_EOL, $data) . ']]]' . PHP_EOL);
         });
     }
 
