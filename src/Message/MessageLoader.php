@@ -101,6 +101,8 @@ class MessageLoader implements TargetInterface
      */
     public function loadMessage($hl7String, $checkEncoding = true)
     {
+        $hl7String = trim($hl7String, " \n\r\t\v\x00". chr(28)) . chr(28) . chr(13);
+
         return $this->_unserializer->loadMessageFromString($hl7String, $this->_segmentClassMap, $checkEncoding);
     }
 }
