@@ -75,22 +75,11 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     protected $_socket;
 
-    /**
-     * To hold partial messages
-     *
-     * @var string
-     */
-    protected $_stack = null;
 
     protected $_verbose = false;
 
-    /**
-     * Should we only listen or also process a message?
-     *
-     * @var bool
-     */
-    protected $runQueue = true;
-
+    protected $messageEnd;
+    protected $messageStart;
     /**
      *
      * @var ProjectOverloader
@@ -110,6 +99,20 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
     protected $queueManager;
 
     /**
+     * Should we only listen or also process a message?
+     *
+     * @var bool
+     */
+    protected $runQueue = true;
+
+    /**
+     * To hold partial messages
+     *
+     * @var string
+     */
+    protected $stack = '';
+
+    /**
      *
      * @param array $applicationConfig Application part of the config file
      */
@@ -120,6 +123,9 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->_loop    = Factory::create();
         $this->_socket  = new SocketServer($this->_loop);
         $this->_verbose = $verbose;
+
+        $this->messageEnd = chr(28) . chr(13);
+        $this->messageStart = chr(11) . 'MSH';
 
         // Add a ping function to db each xx seconds to keep the connection alive
         if ($this->_dbPingTime !== 0) {
@@ -187,23 +193,12 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $connection->on('data', function($data) use ($connection) {
             try {
                 $this->log(PHP_EOL . PHP_EOL . strlen($data) . ' bytes data received' . PHP_EOL);
-                do {
-                    if (!is_null($this->_stack)) {
-                        $data = $this->_stack . $data;
-                        $this->_stack = null;
-                    }
-                    if ($pos = strpos($data, chr(11) . 'MSH')) {
-                        $this->_stack = substr($data, $pos);
-                        $data = substr($data, 0, $pos - 1);
-                    }
-                    if (chr(28) . chr(13) == substr($data, -2)) {
-                        $data = MLLPParser::unwrap($data);
-                        $this->emit('data', array($data, $connection));
-                        break;
-                    } else {
-                        $this->_stack = $data . $this->_stack;
-                    }
-                } while ($data);
+
+                $packets = $this->splitMessages($this->_stack . $data);
+                foreach ($packets as $packet) {
+                    $data = MLLPParser::unwrap($data);
+                    $this->emit('data', array($data, $connection));
+                }
             } catch(\InvalidArgumentException $e) {
                 // save the partial message
                 // $this->_stack = $data;
@@ -245,6 +240,11 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
             $self->log('Received from ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data:[[[' . PHP_EOL .
                 str_replace(chr(13), PHP_EOL, $data) . ']]]' . PHP_EOL);
         });
+    }
+
+    public function isMessageComplete($message)
+    {
+        return substr($message, -strlen($this->messageEnd)) === $this->messageEnd;
     }
 
     /**
@@ -421,5 +421,31 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->send($ack, $connection);
 
         return $this;
+    }
+
+    protected function splitMessages($messages)
+    {
+        $first  = true;
+        $output = explode($this->messageEnd . $this->messageStart, $this->stack . $messages);
+
+        $last = $this->messageStart . array_pop($output);
+
+        foreach ($output as &$message) {
+            if ($first) {
+                $message .= $this->messageEnd;
+                $first = false;
+            } else {
+                $message = $this->messageStart . $message . $this->messageEnd;
+            }
+        }
+
+        if ($this->isMessageComplete($last)) {
+            $output[] = $last;
+            $this->stack = '';
+        } else {
+            $this->stack = $last;
+        }
+
+        return $output;
     }
 }
