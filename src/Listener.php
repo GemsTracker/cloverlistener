@@ -225,8 +225,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         // Log sent data
         $this->on('send', function($data, ConnectionInterface $connection) use ($self) {
-            $self->log('Sending to ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' data:' . PHP_EOL .
-                str_replace(chr(13), PHP_EOL, $data) . PHP_EOL);
+            $self->log(PHP_EOL . 'Sending to ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data: <<<' . PHP_EOL .
+                str_replace(chr(13), PHP_EOL, $data) . ' >>>' . PHP_EOL);
         });
 
         // Log received data
