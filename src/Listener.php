@@ -365,7 +365,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                 'hm_message'    => $data,
                 ];
 
-            error_log(print_r($values, true));
+            // error_log(print_r($values, true));
 
             if ($this->_messageTable->insert($values)) {
                 return $this->_messageTable->getLastInsertValue();
