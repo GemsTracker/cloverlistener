@@ -131,6 +131,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         if (isset($this->config['logfile'])) {
             $this->_fHandle = fopen($this->config['logfile'], 'a+');
         }
+        $this->log("Init: " . get_class($this->_loop) . PHP_EOL);
         $this->log(sprintf(
             "Starting server at %s on %s:%s" . PHP_EOL,
             date('c'),
@@ -271,8 +272,8 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
      */
     public function onError($errorMessage, ConnectionInterface $connection)
     {
-        echo sprintf(
-            'Error from ' . $connection->getRemoteAddress() . ' at %s: %s' . PHP_EOL,
+        echo PHP_EOL . PHP_EOL . sprintf(
+            'Error from {{{ ' . $connection->getRemoteAddress() . ' at %s: %s }}}' . PHP_EOL,
             date('c'),
             $errorMessage);
     }
