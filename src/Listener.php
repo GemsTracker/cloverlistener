@@ -191,20 +191,21 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
 
         $this->emit('connection', array($connection));
         $connection->on('data', function($data) use ($connection) {
-            try {
-                $this->log(PHP_EOL . PHP_EOL . strlen($data) . ' bytes data received' . PHP_EOL);
+            $this->log(PHP_EOL . PHP_EOL . strlen($data) . ' bytes data received.' . PHP_EOL);
 
-                $packets = $this->splitMessages($this->_stack . $data);
-                foreach ($packets as $packet) {
-                    $data = MLLPParser::unwrap($data);
-                    $this->emit('data', array($data, $connection));
+            $packets = $this->splitMessages($data);
+            $this->log('Processing ' . count($packets) . ' packets.'. PHP_EOL);
+            foreach ($packets as $packet) {
+                try {
+                    $wrapped = MLLPParser::unwrap($packet);
+                    $this->emit('data', array($wrapped, $connection));
+                } catch(\InvalidArgumentException $e) {
+                    // save the partial message
+                    // $this->_stack = $data;
+                    // Do not stop yet
+                    //$this->handleInvalidMLLPEnvelope($data, $connection);
+                    $this->emit('error', array('Invalid MLLP envelope. Received: "'.$packet.'"' . PHP_EOL . $e->getMessage() . PHP_EOL, $connection));
                 }
-            } catch(\InvalidArgumentException $e) {
-                // save the partial message
-                // $this->_stack = $data;
-                // Do not stop yet
-                //$this->handleInvalidMLLPEnvelope($data, $connection);
-                $this->emit('error', array('Invalid MLLP envelope. Received: [[[["'.$data.'"]]]]' . PHP_EOL . $e->getMessage() . PHP_EOL, $connection));
             }
         });
     }
@@ -224,27 +225,32 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         // Log error info
         $this->on('error', function($errorMessage, ConnectionInterface $connection) use ($self) {
             $self->log(sprintf(
-                'Error from ' . $connection->getRemoteAddress() . ' at %s: [[%s]]   ' . PHP_EOL,
+                'Error from ' . $connection->getRemoteAddress() . ' at %s: %s   ' . PHP_EOL,
                 date('c'),
                 $errorMessage));
         });
 
         // Log sent data
         $this->on('send', function($data, ConnectionInterface $connection) use ($self) {
-            $self->log(PHP_EOL . 'Sending to ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data: <<<' . PHP_EOL .
-                str_replace(chr(13), PHP_EOL, $data) . ' >>>' . PHP_EOL);
+            $self->log(PHP_EOL . 'Sending to ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data: ' . PHP_EOL .
+                str_replace(chr(13), PHP_EOL, $data) . ' ' . PHP_EOL);
         });
 
         // Log received data
         $this->on('data', function($data, ConnectionInterface $connection) use ($self) {
-            $self->log('Received from ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data:[[[' . PHP_EOL .
-                str_replace(chr(13), PHP_EOL, $data) . ']]]' . PHP_EOL);
+            $self->log('Received from ' . $connection->getRemoteAddress() . ' at ' . date('c') . ' bytes ' . strlen($data) . ' data:' . PHP_EOL .
+                str_replace(chr(13), PHP_EOL, $data) . '' . PHP_EOL);
         });
     }
 
-    public function isMessageComplete($message)
+    public function hasMessageEnd($message)
     {
         return substr($message, -strlen($this->messageEnd)) === $this->messageEnd;
+    }
+
+    public function hasMessageStart($message)
+    {
+        return substr($message, 0, strlen($this->messageStart)) === $this->messageStart;
     }
 
     /**
@@ -428,7 +434,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $first  = true;
         $output = explode($this->messageEnd . $this->messageStart, $this->stack . $messages);
 
-        $last = $this->messageStart . array_pop($output);
+        $last = array_pop($output);
 
         foreach ($output as &$message) {
             if ($first) {
@@ -439,11 +445,15 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
             }
         }
 
-        if ($this->isMessageComplete($last)) {
+        if ($this->hasMessageEnd($last)) {
             $output[] = $last;
             $this->stack = '';
         } else {
-            $this->stack = $last;
+            if ($this->hasMessageStart($last)) {
+                $this->stack = $last;
+            } else {
+                $this->stack = $this->messageStart . $last;
+            }
         }
 
         return $output;
