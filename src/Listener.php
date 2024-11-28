@@ -185,6 +185,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $this->emit('connection', array($connection));
         $connection->on('data', function($data) use ($connection) {
             try {
+                $this->log(strlen($data) . ' bytes data received' . PHP_EOL);
                 if (!is_null($this->_stack)) {
                     $data = $this->_stack . $data;
                     $this->_stack = null;
