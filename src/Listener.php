@@ -214,9 +214,9 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         });
 
         // Log error info
-        $this->on('error', function($errorMessage, ConnectionInterface $connection) use ($self) {
+        $this->on('error', function($errorMessage, ConnectionInterface $connection = null) use ($self) {
             $self->log(sprintf(
-                'Error from ' . $connection->getRemoteAddress() . ' at %s: %s' . PHP_EOL,
+                'Error from ' . $connection ? $connection->getRemoteAddress() : 'unkown' . ' at %s: %s' . PHP_EOL,
                 date('c'),
                 $errorMessage));
         });
