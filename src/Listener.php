@@ -187,16 +187,26 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
         $connection->on('data', function($data) use ($connection) {
             try {
                 $this->log(PHP_EOL . PHP_EOL . strlen($data) . ' bytes data received' . PHP_EOL);
-                if (!is_null($this->_stack)) {
-                    $data = $this->_stack . $data;
-                    $this->_stack = null;
-                }
-                $data = rtrim($data, " \n\r\t\v\x00") . chr(28) . chr(28) . chr(13);
-                $data = MLLPParser::unwrap($data);
-                $this->emit('data', array($data, $connection));
+                do {
+                    if (!is_null($this->_stack)) {
+                        $data = $this->_stack . $data;
+                        $this->_stack = null;
+                    }
+                    if ($pos = strpos($data, chr(11) . 'MSH')) {
+                        $this->_stack = substr($data, $pos);
+                        $data = substr($data, 0, $pos - 1);
+                    }
+                    if (chr(28) . chr(13) == substr($data, -2)) {
+                        $data = MLLPParser::unwrap($data);
+                        $this->emit('data', array($data, $connection));
+                        $data = null;
+                    } else {
+                        $this->_stack = $data . $this->_stack;
+                    }
+                } while ($data);
             } catch(\InvalidArgumentException $e) {
                 // save the partial message
-                $this->_stack = $data;
+                // $this->_stack = $data;
                 // Do not stop yet
                 //$this->handleInvalidMLLPEnvelope($data, $connection);
                 $this->emit('error', array('Invalid MLLP envelope. Received: [[[["'.$data.'"]]]]' . PHP_EOL . $e->getMessage() . PHP_EOL, $connection));
