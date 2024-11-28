@@ -189,7 +189,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                     $data = $this->_stack . $data;
                     $this->_stack = null;
                 }
-                $data = chr(11) , trim($data, " \n\r\t\v\x00" . chr(28)) . chr(28) . chr(13);
+                $data = rtrim($data, " \n\r\t\v\x00") . chr(28) . chr(28) . chr(13);
                 $data = MLLPParser::unwrap($data);
                 $this->emit('data', array($data, $connection));
             } catch(\InvalidArgumentException $e) {
