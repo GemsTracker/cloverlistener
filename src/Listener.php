@@ -199,7 +199,7 @@ class Listener extends Server implements ApplicationInterface, TargetInterface
                     if (chr(28) . chr(13) == substr($data, -2)) {
                         $data = MLLPParser::unwrap($data);
                         $this->emit('data', array($data, $connection));
-                        $data = null;
+                        break;
                     } else {
                         $this->_stack = $data . $this->_stack;
                     }
